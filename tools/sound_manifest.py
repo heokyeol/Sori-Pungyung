@@ -2,7 +2,7 @@
 import json, sys
 dl = sys.argv[1]
 fs = {}
-for f in ("fs-ambience.json", "fs-birds.json", "fs-birds2.json", "fs-unlock.json", "fs-season.json", "fs-season2.json"):
+for f in ("fs-ambience.json", "fs-birds.json", "fs-birds2.json", "fs-unlock.json", "fs-season.json", "fs-season2.json", "fs-region.json"):
     for rows in json.load(open(f"{dl}/{f}")).values():
         for r in rows: fs[r["id"]] = r
 cm = {}
@@ -39,6 +39,12 @@ PICKS = [
     ("s_yangyang", "loop", "fs:191444"), ("s_haeundae", "loop", "fs:580707"), ("s_damyang", "loop", "fs:404688"),
     ("s_maisan", "loop", "fs:218305"), ("s_naejangsan", "loop", "fs:403764"), ("s_mindungsan", "loop", "fs:666180"),
     ("s_daegwallyeong", "loop", "fs:505999"), ("s_pyeongchang", "loop", "fs:558792"), ("s_hwacheon", "loop", "fs:737896"),
+    # Region sounds (시·군·섬)
+    ("r_hangang", "loop", "fs:385104"), ("r_chuncheon", "loop", "fs:388468"), ("r_cheorwon", "loop", "fs:548491"),
+    ("r_danyang", "loop", "fs:177958"), ("r_taean", "loop", "fs:654441"), ("r_jeonju", "loop", "fs:669487"),
+    ("r_suncheon", "loop", "fs:667599"), ("r_yeosu", "loop", "fs:342878"), ("r_namhae", "loop", "fs:770270"),
+    ("r_andong", "loop", "fs:335891"), ("r_tongyeong", "loop", "fs:266691"), ("r_ulleung", "loop", "fs:630433"),
+    ("r_jeju", "loop", "fs:659004"), ("r_udo", "loop", "fs:135828"),
 ]
 out = []
 for target, kind, key in PICKS:

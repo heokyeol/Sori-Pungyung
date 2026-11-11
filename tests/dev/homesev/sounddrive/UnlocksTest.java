@@ -14,9 +14,10 @@ public final class UnlocksTest {
         check("all categories have places", java.util.Arrays.stream(Unlocks.ALL).allMatch(c -> u.count(c.id) > 0));
 
         java.util.Set<String> none = new java.util.HashSet<>();
-        check("26 regions loaded", u.size() == 26);
-        // 영종도 (Incheon Airport terminal is on the island) → airplane
-        check("인천공항 터미널 → airport (영종도)", has(u.check(37.4490, 126.4510, none), "airport"));
+        check("25 hidden landmarks loaded", u.size() == 25);
+        // 영종도 is a region now (Regions), not a hidden landmark
+        check("인천공항 터미널 → no hidden landmark", !has(u.check(37.4490, 126.4510, none), "airport"));
+        check("제주공항 → airport", has(u.check(33.5071, 126.4916, none), "airport"));
         check("김포공항 → airport", has(u.check(37.5587, 126.7945, none), "airport"));
         check("의왕 철도박물관 → station", has(u.check(37.3140, 126.9508, none), "station"));
         check("잠실야구장 → baseball", has(u.check(37.5122, 127.0719, none), "baseball"));
@@ -25,9 +26,8 @@ public final class UnlocksTest {
         check("서울역 → nothing now", u.check(37.5547, 126.9707, none).isEmpty());
         check("바다 한가운데 → nothing", u.check(36.0, 124.8, none).isEmpty());
         java.util.Set<String> done = new java.util.HashSet<>(java.util.Collections.singleton("airport"));
-        check("unlocked airport not reported again", !has(u.check(37.4490, 126.4510, done), "airport"));
-        for (Unlocks.Hit h : u.check(37.4490, 126.4510, none))
-            System.out.printf("   인천공항: %s via %s (%.0f m)%n", h.category.id, h.placeName, h.distanceM);
+        check("unlocked airport not reported again", !has(u.check(37.5587, 126.7945, done), "airport"));
+        check("within(): 잠실 stamp", u.within(37.5122, 127.0719).contains("잠실야구장"));
         // Radar query: nearest first, per-category cap, filter, bearing.
         java.util.List<Unlocks.Place> near = u.near(37.5665, 126.9780, RadarView_RANGE, 3, null);
         boolean sorted = true;

@@ -22,6 +22,20 @@ const SOUNDS = [
   { id: "u_harbor", name: "항구 갈매기", color: "#7FB0D8", x: 0.7, y: 0.5, unlock: "harbor" },
   { id: "u_cafe", name: "카페", color: "#C79A7A", x: -0.2, y: 0.8, unlock: "cafe" },
   { id: "u_baseball", name: "야구장", color: "#FF8A80", x: 0.2, y: 0.8, unlock: "baseball" },
+  { id: "r_hangang", name: "한강 밤", color: "#7FA7D9", x: -0.35, y: 0.9, region: 1 },
+  { id: "r_chuncheon", name: "호숫가 물새", color: "#7CC6C0", x: -0.1, y: 0.95, region: 1 },
+  { id: "r_cheorwon", name: "두루미", color: "#E6E2D6", x: 0.1, y: 0.95, region: 1 },
+  { id: "r_danyang", name: "동굴 물방울", color: "#8EA6B4", x: 0.35, y: 0.9, region: 1 },
+  { id: "r_taean", name: "갯벌", color: "#B59B7A", x: -0.95, y: 0, region: 1 },
+  { id: "r_jeonju", name: "한옥 처마 빗소리", color: "#9C8C7A", x: -0.9, y: -0.35, region: 1 },
+  { id: "r_suncheon", name: "갈대와 철새", color: "#CDB77E", x: 0.95, y: 0, region: 1 },
+  { id: "r_yeosu", name: "여수 밤바다", color: "#5E7FC2", x: 0.9, y: -0.35, region: 1 },
+  { id: "r_namhae", name: "다랭이논 개구리", color: "#8BC34A", x: -0.65, y: -0.65, region: 1 },
+  { id: "r_andong", name: "하회마을 대숲", color: "#79A86B", x: 0.65, y: -0.65, region: 1 },
+  { id: "r_tongyeong", name: "통영 어시장", color: "#E0A06A", x: -0.35, y: -0.9, region: 1 },
+  { id: "r_ulleung", name: "절벽 갈매기", color: "#B0C4D8", x: 0.35, y: -0.9, region: 1 },
+  { id: "r_jeju", name: "제주 바람", color: "#9FD8C8", x: -0.1, y: -0.95, region: 1 },
+  { id: "r_udo", name: "섬 파도", color: "#56B4D3", x: 0.1, y: -0.95, region: 1 },
   { id: "s_jinhae", name: "벚꽃길", color: "#F7B5C8", x: -0.85, y: 0.2, spot: "jinhae" },
   { id: "s_boseong", name: "차밭 봄바람", color: "#8FD19E", x: -0.75, y: 0.45, spot: "boseong" },
   { id: "s_gasiri", name: "봄 들판 종다리", color: "#F2D96B", x: -0.55, y: 0.7, spot: "gasiri" },
@@ -35,6 +49,32 @@ const SOUNDS = [
   { id: "s_pyeongchang", name: "스키장", color: "#A9C8E8", x: 0.75, y: -0.45, spot: "pyeongchang" },
   { id: "s_hwacheon", name: "얼음 갈라짐", color: "#9FD3E6", x: 0.55, y: -0.7, spot: "hwacheon" },
 ];
+// Region sounds (default unlocks): anywhere in the 시·군·섬 opens its sound.
+const REGIONS = [
+  ["yeongjong", "인천 영종도", "u_airport", "✈️", 8000, [[37.47754, 126.4697]]],
+  ["hangang", "서울 한강", "r_hangang", "🌉", 1500, [[37.52567, 126.93606], [37.50887, 126.99394], [37.52983, 127.06811]]],
+  ["chuncheon", "춘천", "r_chuncheon", "🦆", 8000, [[37.88106, 127.72976]]],
+  ["sokcho", "속초·설악", "u_valley", "🏞️", 8000, [[38.20696, 128.59134], [38.16062, 128.49588]]],
+  ["gangneung", "강릉", "u_cafe", "☕", 10000, [[37.75253, 128.87595]]],
+  ["cheorwon", "철원", "r_cheorwon", "🕊️", 12000, [[38.24315, 127.25125]]],
+  ["danyang", "단양", "r_danyang", "💧", 8000, [[36.98643, 128.36824]]],
+  ["taean", "태안", "r_taean", "🦀", 15000, [[36.75791, 126.29652]]],
+  ["jeonju", "전주 한옥마을", "r_jeonju", "🏮", 1500, [[35.81816, 127.15305]]],
+  ["gokseong", "곡성", "u_station", "🚂", 8000, [[35.28015, 127.28443]]],
+  ["suncheon", "순천만", "r_suncheon", "🌾", 4000, [[34.88668, 127.5075]]],
+  ["yeosu", "여수", "r_yeosu", "🌃", 10000, [[34.7393, 127.73594]]],
+  ["namhae", "남해", "r_namhae", "🐸", 15000, [[34.83855, 127.89366]]],
+  ["gyeongju", "경주", "u_temple", "🛕", 12000, [[35.85567, 129.22488]]],
+  ["andong", "안동 하회마을", "r_andong", "🎋", 2500, [[36.54024, 128.52082]]],
+  ["busan", "부산", "u_harbor", "⚓", 15000, [[35.17995, 129.07524]]],
+  ["tongyeong", "통영", "r_tongyeong", "🐟", 8000, [[34.85425, 128.4332]]],
+  ["ulleung", "울릉도", "r_ulleung", "🪨", 9000, [[37.50111, 130.85861]]],
+  ["jeju", "제주도", "r_jeju", "🌬️", 20000, [[33.50004, 126.52936], [33.25395, 126.55999], [33.39, 126.25], [33.45, 126.85]]],
+  ["udo", "우도", "r_udo", "🌊", 3000, [[33.5067, 126.95574]]],
+].map(([id, name, sound, emoji, r, pts]) => ({ id, name, sound, emoji, r, pts }));
+const regionDist = (g, lat, lon) => Math.min(...g.pts.map(([a, b]) => dist(lat, lon, a, b)));
+const regionPoint = (g, lat, lon) => g.pts.reduce((best, p) => (dist(lat, lon, p[0], p[1]) < dist(lat, lon, best[0], best[1]) ? p : best), g.pts[0]);
+
 // Seasonal landmarks: unlock only at the place, in its season (0 spring … 3 winter). Kept once unlocked.
 const SEASONS = ["봄", "여름", "가을", "겨울"];
 const seasonOf = (m) => (m >= 3 && m <= 5 ? 0 : m >= 6 && m <= 8 ? 1 : m >= 9 && m <= 11 ? 2 : 3);
@@ -78,6 +118,7 @@ const S = {
   master: saved.master ?? 0.8, motion: saved.motion ?? 0, birdAuto: saved.birdAuto ?? true,
   birdsOn: saved.birdsOn ?? Object.fromEntries(BIRDS.map((b) => [b.id, true])),
   unlocked: saved.unlocked ?? {}, spots: saved.spots ?? {}, spotNote: saved.spotNote ?? {},
+  regions: saved.regions ?? {}, stamps: saved.stamps ?? {},
 };
 const first = !saved.sounds;
 for (const s of SOUNDS) {
@@ -85,14 +126,15 @@ for (const s of SOUNDS) {
   s.hx = s.x; s.hy = s.y;
   s.x = p.x ?? s.x; s.y = p.y ?? s.y; s.volume = p.v ?? 0.8;
   s.on = p.on ?? (first && (s.id === "rain" || s.id === "pad"));
-  s.locked = (!!s.unlock && !S.unlocked[s.unlock]) || (!!s.spot && !S.spots[s.spot]);
+  s.locked = (!!s.unlock && !S.unlocked[s.unlock]) || (!!s.spot && !S.spots[s.spot])
+    || (!!s.region && !REGIONS.some((g) => g.sound === s.id && S.regions[g.id]));
   s.anim = { shown: s.on ? 1 : 0, pop: 0 };
 }
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => localStorage.setItem("sd:state", JSON.stringify({
-    master: S.master, motion: S.motion, birdAuto: S.birdAuto, birdsOn: S.birdsOn, unlocked: S.unlocked, spots: S.spots, spotNote: S.spotNote,
+    master: S.master, motion: S.motion, birdAuto: S.birdAuto, birdsOn: S.birdsOn, unlocked: S.unlocked, spots: S.spots, spotNote: S.spotNote, regions: S.regions, stamps: S.stamps,
     sounds: Object.fromEntries(SOUNDS.map((s) => [s.id, { x: s.x, y: s.y, v: s.volume, on: s.on }])),
   })), 300);
 }
@@ -399,7 +441,7 @@ function refresh() {
   const left = Math.ceil(sleepLeft() / 60e3);
   $("sleep").textContent = sleepMin ? `수면 타이머: ${sleepMin}분 (${left}분 남음)` : "수면 타이머: 끔";
   $("motion").textContent = "움직임: " + MOTION[S.motion];
-  $("dex").textContent = `소리 도감 (${Object.keys(S.unlocked).length + Object.keys(S.spots).length}/${CATS.length + SPOTS.length})`;
+  $("dex").textContent = `소리 도감 (${Object.keys(S.regions).length + Object.keys(S.stamps).length + Object.keys(S.spots).length}/${REGIONS.length + (places ? places.length : 25) + SPOTS.length})`;
   $("darkText").textContent = "화면을 누르면 돌아와요" + (sleepMin ? `\n수면 타이머 ${left}분 남음` : "");
 }
 $("play").onclick = () => (playing ? stop() : play());
@@ -448,19 +490,23 @@ $("species").onclick = () => {
   modal("새 종류", f);
 };
 $("dex").onclick = () => {
-  const lines = CATS.map((c) => {
-    const s = SOUNDS.find((x) => x.unlock === c.id), u = S.unlocked[c.id];
-    return u ? `🔓 ${s.name}\n    ${u.place} · ${new Date(u.at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}` : `🔒 ${s.name}\n    ${c.hint}`;
-  });
+  const day = (t) => new Date(t).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+  const sn = (id) => SOUNDS.find((x) => x.id === id).name;
+  const L = [`── 지역 소리 (${Object.keys(S.regions).length}/${REGIONS.length}) ──`];
+  for (const g of REGIONS) L.push(`${S.regions[g.id] ? "🔓" : "🔒"} ${g.name} · ${sn(g.sound)}${S.regions[g.id] ? " · " + day(S.regions[g.id].at) : ""}`);
+  L.push("", `── 숨은 명소 도장 (${Object.keys(S.stamps).length}/${places ? places.length : 25}) ──`);
+  const st = Object.keys(S.stamps).sort();
+  L.push(...(st.length ? st.map((n) => "◉ " + n) : ["아직 찾은 숨은 명소가 없어요."]));
+  L.push(`공항, 기차, 도서관, 야구장처럼 이름난 곳 ${places ? places.length : 25}곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 열려요.`);
   const now = seasonOf(new Date().getMonth() + 1);
-  lines.push(`── 계절 명소 (지금은 ${SEASONS[now]}) ──`);
+  L.push("", `── 계절 명소 (지금은 ${SEASONS[now]}) ──`);
   for (const sp of SPOTS) {
     const s = SOUNDS.find((x) => x.spot === sp.id), u = S.spots[sp.id];
-    lines.push(u ? `🔓 ${s.name}\n    ${sp.place} · ${new Date(u.at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}`
-      : `${sp.season === now ? "◆" : "🔒"} ${s.name}\n    ${SEASONS[sp.season]}에 ${sp.place}에 가면 열려요${sp.season === now ? " · 지금이 그 계절이에요" : ""}`);
+    L.push(u ? `🔓 ${s.name} · ${sp.place} · ${day(u.at)}` : `${sp.season === now ? "◆" : "🔒"} ${s.name} · ${SEASONS[sp.season]}에 ${sp.place}에 가면 열려요`);
   }
-  modal("소리 도감", lines.join("\n\n") + "\n\n" + (geoOk ? "위치는 이 페이지가 열려 있을 때만 확인해요." : "위치 권한이 없어서 소리가 열리지 않아요. 브라우저에서 위치를 허용해 주세요."));
+  modal("소리 도감", L.join("\n") + "\n\n" + (geoOk ? "위치는 이 페이지가 열려 있을 때만 확인해요." : "위치 권한이 없어서 소리가 열리지 않아요. 브라우저에서 위치를 허용해 주세요."));
 };
+window.toast = toast;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 4000); }
 
 // ── Location unlocks (offline place list, no map API) ─────────────────────
@@ -473,18 +519,27 @@ function check(lat, lon, force) {
   const moved = isNaN(lastCheck.lat) || dist(lat, lon, lastCheck.lat, lastCheck.lon) > 25;
   if (!force && !moved && Date.now() - lastCheck.t < 15e3) return;
   lastCheck = { lat, lon, t: Date.now() };
-  const best = {};
-  for (const [c, la, lo, name, rad] of places) {
-    if (S.unlocked[c]) continue;
-    const cat = CATS.find((x) => x.id === c), pl = la / 1e5, r = rad || cat.r; // each region has its own radius
-    if (Math.abs(pl - lat) * 111000 > r) continue;
-    const d = dist(lat, lon, pl, lo / 1e5);
-    if (d <= r && (!best[c] || d < best[c].d)) best[c] = { d, name: name || cat.place };
+  const best = {}, msgs = [];
+  const toast = (m) => msgs.push(m); // several unlocks at once → one combined message
+  // 1) Region sounds
+  for (const g of REGIONS) {
+    if (S.regions[g.id] || regionDist(g, lat, lon) > g.r) continue;
+    S.regions[g.id] = { at: Date.now() }; best["region:" + g.id] = 1;
+    const s = SOUNDS.find((x) => x.id === g.sound), was = s.locked; s.locked = false;
+    const cat = CATS.find((c) => SOUNDS.find((x) => x.unlock === c.id)?.id === g.sound);
+    if (cat && !S.unlocked[cat.id]) S.unlocked[cat.id] = { place: g.name, at: Date.now() };
+    toast(was ? `🔓 ${g.name}에서 '${s.name}' 소리가 열렸어요` : `◉ ${g.name} 도장을 찍었어요`); buzz([20, 60, 20]);
   }
-  for (const [c, b] of Object.entries(best)) {
-    S.unlocked[c] = { place: b.name, at: Date.now() };
-    const s = SOUNDS.find((x) => x.unlock === c); s.locked = false;
-    toast(`🔓 ${b.name} 근처에서 '${s.name}' 소리가 열렸어요`); buzz([20, 60, 20]);
+  // 2) Hidden landmarks: a stamp each, opening the category sound if needed
+  for (const [c, la, lo, name, rad] of places) {
+    if (S.stamps[name]) continue;
+    const cat = CATS.find((x) => x.id === c), r = rad || cat.r;
+    if (dist(lat, lon, la / 1e5, lo / 1e5) > r) continue;
+    S.stamps[name] = Date.now(); best["stamp:" + name] = 1;
+    const s = SOUNDS.find((x) => x.unlock === c);
+    if (!S.unlocked[c]) { S.unlocked[c] = { place: name, at: Date.now() }; s.locked = false; toast(`🔓 숨은 명소 ${name}에서 '${s.name}' 소리가 열렸어요`); }
+    else toast(`◉ 숨은 명소 ${name} 도장을 찍었어요`);
+    buzz([20, 60, 20]);
   }
   // Seasonal landmarks
   const month = new Date().getMonth() + 1, now = seasonOf(month), today = new Date().toISOString().slice(0, 10);
@@ -502,6 +557,7 @@ function check(lat, lon, force) {
       toast(`${sp.place}${topic(sp.place)} ${SEASONS[sp.season]}에 다시 오면 '${s.name}' 소리가 열려요`);
     }
   }
+  if (msgs.length) window.toast(msgs.join("\n"));
   if (changed) { save(); rows(); requestDraw(); }
 }
 // Korean topic particle: 은 after a final consonant, 는 otherwise ("해변은", "대관령은", "해운대는").
@@ -528,18 +584,12 @@ let showAll = false, mapObj = null, radarPts = [];
 const RANGE = 300000, FALLBACK = { lat: 37.5665, lon: 126.978 };
 const radarScale = (d) => (d <= 100 ? 0 : Math.min(1, Math.log10(d / 100) / Math.log10(RANGE / 100)));
 const rc = $("radar"), rg = rc.getContext("2d");
-function shownCats() { return CATS.filter((c) => showAll || !S.unlocked[c.id]).map((c) => c.id); }
+// Radar/map show regions (and seasonal spots on the map). Hidden landmarks are never shown.
 function nearPlaces(me) {
-  if (!places) return [];
-  const only = new Set(shownCats()), all = [];
-  for (const [c, la, lo, name, rad] of places) {
-    if (!only.has(c)) continue;
-    const pl = la / 1e5; if (Math.abs(pl - me.lat) * 111000 > RANGE) continue;
-    const d = dist(me.lat, me.lon, pl, lo / 1e5); if (d > RANGE) continue;
-    all.push({ c, name: name || CATS.find((x) => x.id === c).place, d, b: bearing(me.lat, me.lon, pl, lo / 1e5), lat: pl, lon: lo / 1e5, r: rad });
-  }
-  all.sort((a, b) => a.d - b.d);
-  const per = {}; return all.filter((p) => (per[p.c] = (per[p.c] || 0) + 1) <= 3);
+  return REGIONS.filter((g) => showAll || !S.regions[g.id]).map((g) => {
+    const [la, lo] = regionPoint(g, me.lat, me.lon);
+    return { g, name: g.name, d: regionDist(g, me.lat, me.lon), b: bearing(me.lat, me.lon, la, lo), lat: la, lon: lo, r: g.r };
+  }).filter((p) => p.d <= RANGE).sort((a, b) => a.d - b.d).slice(0, 12);
 }
 function drawPlaces() {
   $("placesFilter").textContent = showAll ? "전부 보기" : "안 열린 것만";
@@ -553,7 +603,7 @@ function drawPlaces() {
   radarPts = [];
   const list = nearPlaces(me);
   for (const p of list.slice().reverse()) {
-    const cat = CATS.find((x) => x.id === p.c), rr = radarScale(p.d) * rad, a = (p.b * Math.PI) / 180;
+    const cat = { color: SOUNDS.find((x) => x.id === p.g.sound).color, emoji: p.g.emoji }, rr = radarScale(p.d) * rad, a = (p.b * Math.PI) / 180;
     const x = cx + Math.sin(a) * rr, y = cy - Math.cos(a) * rr;
     rg.globalAlpha = 0.25; rg.fillStyle = cat.color; rg.beginPath(); rg.arc(x, y, 16, 0, 7); rg.fill();
     rg.globalAlpha = 1; rg.font = "17px sans-serif"; rg.fillText(cat.emoji, x, y + 6);
@@ -570,11 +620,13 @@ function drawPlaces() {
   if (mapObj && mapObj.getSource("places")) updateMap();
 }
 function info(p) {
-  const cat = CATS.find((x) => x.id === p.c), s = SOUNDS.find((x) => x.unlock === p.c);
+  const g = p.g || REGIONS.find((x) => x.id === p.c);
+  const cat = { emoji: g.emoji, r: g.r }, s = SOUNDS.find((x) => x.id === g.sound);
+  p.c = g.id;
   const dd = p.d >= 1000 ? (p.d / 1000).toFixed(1) + "km" : Math.round(p.d) + "m";
   const dir = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(p.b / 45) % 8];
   $("placeInfo").dataset.tapped = "1";
-  $("placeInfo").textContent = `${cat.emoji} ${p.name} · ${dir}쪽 ${dd}\n` + (S.unlocked[p.c] ? `이미 열린 소리: ${s.name}` : `가면 열리는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
+  $("placeInfo").textContent = `${cat.emoji} ${p.name} · ${dir}쪽 ${dd}\n` + (S.regions[g.id] ? `이미 열린 소리: ${s.name}` : `가면 열리는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
 }
 rc.addEventListener("pointerup", (e) => {
   const r = rc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
@@ -582,10 +634,12 @@ rc.addEventListener("pointerup", (e) => {
   if (best) info(best);
 });
 function geojson() {
-  const only = new Set(shownCats()), now = seasonOf(new Date().getMonth() + 1);
-  const feats = (places || []).filter((p) => only.has(p[0])).map(([c, la, lo, name]) => ({
-    type: "Feature", geometry: { type: "Point", coordinates: [lo / 1e5, la / 1e5] },
-    properties: { cat: c, n: name || CATS.find((x) => x.id === c).place, c: CATS.find((x) => x.id === c).color } }));
+  const now = seasonOf(new Date().getMonth() + 1), feats = [];
+  for (const g of REGIONS) {
+    if (!showAll && S.regions[g.id]) continue;
+    for (const [la, lo] of g.pts) feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [lo, la] },
+      properties: { cat: g.id, n: g.name, c: SOUNDS.find((x) => x.id === g.sound).color } });
+  }
   for (const sp of SPOTS) {
     if (!showAll && (S.spots[sp.id] || sp.season !== now)) continue;
     for (const [la, lo] of sp.pts) feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [lo, la] },
@@ -606,12 +660,12 @@ async function openMap() {
   const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"; document.head.append(css);
   try { await loadScript("https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"); } catch (e) { $("placeInfo").textContent = "지도를 불러오지 못했어요. 인터넷 연결을 확인해 주세요."; return; }
   const me = here || FALLBACK;
-  mapObj = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/liberty", center: [me.lon, me.lat], zoom: 12, dragRotate: false });
+  mapObj = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/liberty", center: [me.lon, me.lat], zoom: 7, dragRotate: false });
   mapObj.on("load", () => {
     mapObj.addSource("places", { type: "geojson", data: geojson() });
     mapObj.addSource("me", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     mapObj.addLayer({ id: "dots", type: "circle", source: "places", paint: { "circle-color": ["get", "c"], "circle-radius": 6, "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
-    mapObj.addLayer({ id: "labels", type: "symbol", source: "places", minzoom: 13, layout: { "text-field": ["get", "n"], "text-size": 12, "text-offset": [0, 1.3], "text-optional": true }, paint: { "text-color": "#000", "text-halo-color": "#fff", "text-halo-width": 1.5 } });
+    mapObj.addLayer({ id: "labels", type: "symbol", source: "places", minzoom: 6, layout: { "text-field": ["get", "n"], "text-size": 13, "text-offset": [0, 1.3], "text-optional": true }, paint: { "text-color": "#000", "text-halo-color": "#fff", "text-halo-width": 1.5 } });
     mapObj.addLayer({ id: "me", type: "circle", source: "me", paint: { "circle-color": "#3D7BFF", "circle-radius": 8, "circle-stroke-color": "#fff", "circle-stroke-width": 2.5 } });
     updateMap();
     mapObj.on("click", "dots", (e) => {

@@ -29,6 +29,8 @@ final class Player {
         void onPlayerChanged();
         /** A location unlock just happened (soundName at placeName). */
         default void onUnlocked(String soundName, String placeName) {}
+        /** Found a hidden landmark whose sound was already open: just a stamp. */
+        default void onStamp(String placeName) {}
         /** At a seasonal landmark out of season ("겨울에 다시 오면 …"). */
         default void onOffSeason(String message) {}
         /** New position fix (for the places radar/map). */
@@ -71,6 +73,8 @@ final class Player {
     final Unlocks unlocks = new Unlocks();
     private final java.util.Set<String> unlocked = new java.util.HashSet<>();
     private final java.util.Set<String> spotsUnlocked = new java.util.HashSet<>();
+    private final java.util.Set<String> regionsVisited = new java.util.HashSet<>();
+    private final java.util.Set<String> stamps = new java.util.HashSet<>();
     private DeviceLocation location;
     private int visible; // number of screens currently showing
     private boolean driving;
@@ -228,7 +232,17 @@ final class Player {
         boolean moved = Double.isNaN(lastLat) || Math.hypot((lat - lastLat) * 111_000, (lon - lastLon) * 88_000) > 25;
         if (!moved && now - lastCheckAt < 15_000) return;
         lastLat = lat; lastLon = lon; lastCheckAt = now;
-        for (Unlocks.Hit h : unlocks.check(lat, lon, unlocked)) unlock(h.category, h.placeName);
+        // 1) Region sounds (default unlocks)
+        for (Regions.Region r : Regions.check(lat, lon, regionsVisited)) visitRegion(r);
+        // 2) Hidden landmarks: a stamp each; opens the category sound if it isn't open yet
+        for (String name : unlocks.within(lat, lon)) {
+            if (!stamps.add(name)) continue;
+            prefs.edit().putLong("stamp." + name, System.currentTimeMillis()).apply();
+            Unlocks.Category c = unlocks.categoryOf(name);
+            if (c != null && !unlocked.contains(c.id)) unlock(c, name);
+            else for (Listener l : new ArrayList<>(listeners)) l.onStamp(name);
+        }
+        // 3) Seasonal events
         int month = Calendar.getInstance().get(Calendar.MONTH) + 1;
         Seasons.Check sc = Seasons.check(lat, lon, month, spotsUnlocked);
         for (Seasons.Spot s : sc.unlock) unlockSpot(s);
@@ -244,6 +258,29 @@ final class Player {
         for (Listener l : new ArrayList<>(listeners)) l.onUnlocked(soundName, placeName);
         changed();
     }
+
+    private void visitRegion(Regions.Region r) {
+        if (!regionsVisited.add(r.id)) return;
+        prefs.edit().putString("region." + r.id, r.name + "\t" + System.currentTimeMillis()).apply();
+        // A region that carries a category sound (e.g. 영종도 → airplane) also counts as that category,
+        // so a hidden landmark of the same kind later only adds a stamp.
+        for (Unlocks.Category c : Unlocks.ALL) {
+            if (c.sound.equals(r.sound) && unlocked.add(c.id))
+                prefs.edit().putString("unlock." + c.id, r.name + "\t" + System.currentTimeMillis()).apply();
+        }
+        String soundName = r.sound;
+        boolean wasLocked = false;
+        for (SoundSource s : sources) if (s.id.equals(r.sound)) { wasLocked = s.locked; s.locked = false; soundName = s.name; }
+        android.util.Log.i("SoundDrive", "region " + r.id);
+        for (Listener l : new ArrayList<>(listeners)) {
+            if (wasLocked) l.onUnlocked(soundName, r.name); else l.onStamp(r.name);
+        }
+        changed();
+    }
+
+    String regionInfo(String id) { return prefs.getString("region." + id, null); }
+    java.util.Set<String> regionsVisited() { return regionsVisited; }
+    java.util.Set<String> stamps() { return stamps; }
 
     private void unlockSpot(Seasons.Spot s) {
         if (!spotsUnlocked.add(s.id)) return;
@@ -387,6 +424,12 @@ final class Player {
             s.volume = prefs.getFloat(s.id + ".vol", 0.8f);
             s.enabled = prefs.getBoolean(s.id + ".on", first && (s.id.equals("rain") || s.id.equals("pad")));
         }
+        for (Regions.Region r : Regions.ALL) {
+            if (prefs.getString("region." + r.id, null) == null) continue;
+            regionsVisited.add(r.id);
+            for (SoundSource s : sources) if (s.id.equals(r.sound)) s.locked = false;
+        }
+        for (String k : prefs.getAll().keySet()) if (k.startsWith("stamp.")) stamps.add(k.substring(6));
         for (Seasons.Spot sp : Seasons.ALL) {
             if (prefs.getString("spot." + sp.id, null) == null) continue;
             spotsUnlocked.add(sp.id);

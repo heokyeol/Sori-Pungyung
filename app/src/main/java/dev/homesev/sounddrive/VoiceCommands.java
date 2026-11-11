@@ -48,6 +48,15 @@ final class VoiceCommands {
         {"캠핑", "fire,birds,pad"},
     };
 
+    /** Region words → "region:<id>" (for "춘천으로 안내해 줘"). Checked before place categories. */
+    static final String[][] REGION_WORDS = {
+        {"영종도", "yeongjong"}, {"한강", "hangang"}, {"춘천", "chuncheon"}, {"속초", "sokcho"}, {"설악", "sokcho"},
+        {"강릉", "gangneung"}, {"철원", "cheorwon"}, {"단양", "danyang"}, {"태안", "taean"}, {"전주", "jeonju"},
+        {"곡성", "gokseong"}, {"순천", "suncheon"}, {"여수", "yeosu"}, {"남해", "namhae"}, {"경주", "gyeongju"},
+        {"안동", "andong"}, {"하회", "andong"}, {"부산", "busan"}, {"통영", "tongyeong"}, {"울릉", "ulleung"},
+        {"우도", "udo"}, {"제주", "jeju"},
+    };
+
     /** Spoken place words → unlock category (for "가까운 도서관으로 안내해 줘"). */
     static final String[][] PLACES = {
         {"공항", "airport"}, {"도서관", "library"}, {"사찰", "temple"}, {"절", "temple"}, {"기차역", "station"}, {"역", "station"},
@@ -67,6 +76,7 @@ final class VoiceCommands {
         // Guide me there (built-in navigation)
         if (n.contains("안내") || n.contains("데려다") || n.contains("길찾") || n.contains("가자") || n.contains("가줘")) {
             String place = null;
+            for (String[] r : REGION_WORDS) if (n.contains(r[0])) return new Command(Type.NAVIGATE, null, "region:" + r[1], 0);
             for (String[] p : PLACES) if (n.contains(p[0]) && !(p[0].equals("절") && n.contains("절대")) && !(p[0].equals("역") && !n.contains("역으로") && !n.contains("기차역"))) { place = p[1]; break; }
             return new Command(Type.NAVIGATE, null, place, 0);
         }

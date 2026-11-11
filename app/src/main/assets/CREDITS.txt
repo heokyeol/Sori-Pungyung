@@ -132,6 +132,48 @@
 [s_hwacheon] "Ice - Lake fractures" — Vrymaa — CC0 1.0
   https://freesound.org/people/Vrymaa/sounds/737896/
   Edited: 54 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_hangang] "XY_City hum_Night_River_ambience.wav" — softwalls — CC0 1.0
+  https://freesound.org/people/softwalls/sounds/385104/
+  Edited: 90 s from 80 s, seamless loop, 48 kHz, level normalized
+[r_chuncheon] "Lagoon ambience.wav" — vovere — CC0 1.0
+  https://freesound.org/people/vovere/sounds/388468/
+  Edited: 90 s from 40 s, seamless loop, 48 kHz, level normalized
+[r_cheorwon] "Crane bird calling.wav" — joakgust — CC0 1.0
+  https://freesound.org/people/joakgust/sounds/548491/
+  Edited: 74 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_danyang] "Water Dripping in Cave.wav" — Sclolex — CC0 1.0
+  https://freesound.org/people/Sclolex/sounds/177958/
+  Edited: 85 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_taean] "crackling mudflat" — bruno.auzet — CC0 1.0
+  https://freesound.org/people/bruno.auzet/sounds/654441/
+  Edited: 90 s from 10 s, seamless loop, 48 kHz, level normalized
+[r_jeonju] "Rain on roofs" — xkeril — CC0 1.0
+  https://freesound.org/people/xkeril/sounds/669487/
+  Edited: 50 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_suncheon] "Mudflats Distant Birds and Wind" — Yoyodaman234 — CC0 1.0
+  https://freesound.org/people/Yoyodaman234/sounds/667599/
+  Edited: 90 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_yeosu] "Distant harbour noise in a windy night, Hamburg Landungsbrücken" — Pfannkuchn — CC0 1.0
+  https://freesound.org/people/Pfannkuchn/sounds/342878/
+  Edited: 90 s from 130 s, seamless loop, 48 kHz, level normalized
+[r_namhae] "ambience ricefield at night" — rakun_id123 — CC0 1.0
+  https://freesound.org/people/rakun_id123/sounds/770270/
+  Edited: 58 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_andong] "Bamboo Creaking in Wind" — Yoyodaman234 — CC0 1.0
+  https://freesound.org/people/Yoyodaman234/sounds/335891/
+  Edited: 90 s from 30 s, seamless loop, 48 kHz, level normalized
+[r_tongyeong] "Fish market Venice.wav" — Refrain — CC0 1.0
+  https://freesound.org/people/Refrain/sounds/266691/
+  Edited: 90 s from 40 s, seamless loop, 48 kHz, level normalized
+[r_ulleung] "Sea_Seagulls on cliff.wav" — KaleidacousticsAudio — CC0 1.0
+  https://freesound.org/people/KaleidacousticsAudio/sounds/630433/
+  Edited: 66 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_jeju] "Wind at Ocean shore." — Tom_Kaszuba — CC0 1.0
+  https://freesound.org/people/Tom_Kaszuba/sounds/659004/
+  Edited: 61 s from 0 s, seamless loop, 48 kHz, level normalized
+[r_udo] "Easter Island 5 minute MD recording of waves crashing against volcanic ro~1.wav" — cybergenic — CC0 1.0
+  https://freesound.org/people/cybergenic/sounds/135828/
+  Edited: 90 s from 10 s, seamless loop, 48 kHz, level normalized
 [waves] "Ocean Waves on a Tropical Beach" — Jarrod stanley — CC0 1.0
   https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg
   Edited: 90 s from 75 s, seamless loop, 48 kHz, level normalized

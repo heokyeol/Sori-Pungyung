@@ -38,7 +38,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); height: 32px; }
 #darkOverlay { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,.2); font-size: 15px; text-align: center; white-space: pre-line; z-index: 20; }
 #toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: rgba(30,38,54,.96); color: #fff;
-  padding: 12px 18px; border-radius: 14px; font-size: 15px; z-index: 40; max-width: 90vw; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  padding: 12px 18px; border-radius: 14px; font-size: 15px; z-index: 40; max-width: 90vw; white-space: pre-line; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 30; }
 .sheet { background: var(--panel); border-radius: 18px; width: min(560px, 92vw); max-height: 82dvh; display: flex; flex-direction: column; }
 .sheetHead { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; gap: 12px; }

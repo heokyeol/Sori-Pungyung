@@ -42,6 +42,8 @@ public final class VoiceCommandsTest {
         t("근처 절로 데려다 줘", "NAVIGATE temple");
         t("서울역으로 가자", "NAVIGATE station");
         t("야구장 가자", "NAVIGATE baseball");
+        t("춘천으로 안내해 줘", "NAVIGATE region:chuncheon");
+        t("우도 가자", "NAVIGATE region:udo");
         t("이번 계절 명소 어디야", "SEASON");
         t("가을 명소 알려줘", "SEASON");
         t("오늘 날씨 어때", "UNKNOWN");

@@ -1,6 +1,5 @@
 # Region list for default unlocks: category, lat*1e5, lon*1e5, name, radius m
 # Coordinates © OpenStreetMap contributors (ODbL), looked up once (Nominatim / earlier extract) 2026-11-11
-airport	3747754	12646970	영종도	8000
 airport	3755901	12679424	김포공항	3000
 airport	3350707	12649164	제주공항	3000
 station	3731402	12695083	의왕 철도박물관	800

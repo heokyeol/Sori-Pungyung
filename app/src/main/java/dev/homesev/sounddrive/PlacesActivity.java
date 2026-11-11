@@ -137,7 +137,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                         PropertyFactory.textHaloColor(Color.WHITE),
                         PropertyFactory.textHaloWidth(1.5f),
                         PropertyFactory.textOptional(true));
-                labels.setMinZoom(13f);
+                labels.setMinZoom(6f); // regions are few, label them early
                 s.addLayer(labels);
                 s.addLayer(new CircleLayer("me-dot", "me").withProperties(
                         PropertyFactory.circleColor(0xFF3D7BFF),
@@ -169,7 +169,9 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                             player.spotInfo(spot.id) != null ? "이미 열린 소리" : spot.seasonName() + "에 가면 열리는 소리", sound));
                     return true;
                 }
-                Unlocks.Category c = Unlocks.ALL[Unlocks.index(catId)];
+                Regions.Region rg = Regions.byId(catId.startsWith("region:") ? catId.substring(7) : catId);
+                if (rg == null) return false;
+                Unlocks.Category c = asCategory(rg);
                 double d = distance(me[0], me[1], p.latitude(), p.longitude());
                 select(p.latitude(), p.longitude(), ft.getStringProperty("n"));
                 showInfo(c, ft.getStringProperty("n"), d, bearing(me[0], me[1], p.latitude(), p.longitude()));
@@ -181,11 +183,27 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
     }
 
     // ── Data ───────────────────────────────────────────────────────────────
-    private Set<String> shownCategories() {
-        if (showAll) return null;
-        Set<String> locked = new HashSet<>();
-        for (Unlocks.Category c : Unlocks.ALL) if (player.unlockInfo(c.id) == null) locked.add(c.id);
-        return locked;
+    /** Regions to show: unvisited ones, or all with "전부 보기". Hidden landmarks are never shown. */
+    private Set<String> hiddenRegions() { return showAll ? new HashSet<>() : player.regionsVisited(); }
+
+    /** A region drawn like a place category (its emoji, the colour of its sound). */
+    private Unlocks.Category asCategory(Regions.Region r) {
+        SoundSource s = null;
+        for (SoundSource x : player.sources) if (x.id.equals(r.sound)) s = x;
+        return new Unlocks.Category(r.id, r.sound, r.name, r.radiusM, r.hint(), r.emoji, s != null ? s.color : 0xFFFFFFFF);
+    }
+
+    private List<Unlocks.Place> regionPlaces(double[] me, int max) {
+        List<Unlocks.Place> out = new ArrayList<>();
+        for (Regions.Region r : Regions.nearest(me[0], me[1], hiddenRegions(), max)) {
+            double d = Regions.distance(r, me[0], me[1]);
+            if (d > RadarView.RANGE_M) continue;
+            double[] pt = Regions.nearestPoint(r, me[0], me[1]);
+            Unlocks.Place pl = new Unlocks.Place(asCategory(r), pt[0], pt[1], r.name, d, Regions.bearing(r, me[0], me[1]));
+            pl.radiusM = r.radiusM;
+            out.add(pl);
+        }
+        return out;
     }
 
     private double[] here() {
@@ -195,26 +213,29 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
 
     private void refreshData() {
         filterBtn.setText(showAll ? "전부 보기" : "안 열린 것만");
-        Set<String> only = shownCategories();
         double[] me = here();
         boolean fix = player.lastLocation() != null;
-        if (!player.placesLoaded()) { info.setText("장소 목록을 읽는 중이에요…"); return; }
-        List<Unlocks.Place> near = player.unlocks.near(me[0], me[1], RadarView.RANGE_M, 3, only);
+        List<Unlocks.Place> near = regionPlaces(me, 12);
         radar.setPlaces(near, fix);
         if (info.getTag() == null) {
-            String head = only != null && only.isEmpty() ? "모든 소리를 열었어요! 🎉"
+            String head = !showAll && player.regionsVisited().size() == Regions.ALL.length ? "모든 지역 소리를 열었어요!"
                     : near.isEmpty() ? "300km 안에는 열 수 있는 지역이 없어요. 지도에서 찾아보세요."
                     : "점을 누르면 어떤 소리가 열리는지 보여 줘요.";
             info.setText((fix ? head : "위치를 아직 못 받았어요. 서울시청 기준으로 보여 줘요.") + seasonLine(me));
         }
         if (style != null) {
             List<Feature> feats = new ArrayList<>();
-            for (Unlocks.Place p : player.unlocks.all(only)) {
-                Feature f = Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat));
-                f.addStringProperty("cat", p.category.id);
-                f.addStringProperty("n", p.name);
-                f.addStringProperty("c", String.format("#%06X", p.category.color & 0xFFFFFF));
-                feats.add(f);
+            Set<String> hide = hiddenRegions();
+            for (Regions.Region r : Regions.ALL) {
+                if (hide.contains(r.id)) continue;
+                int color = asCategory(r).color;
+                for (double[] pt : r.points) {
+                    Feature f = Feature.fromGeometry(Point.fromLngLat(pt[1], pt[0]));
+                    f.addStringProperty("cat", "region:" + r.id);
+                    f.addStringProperty("n", r.name);
+                    f.addStringProperty("c", String.format("#%06X", color & 0xFFFFFF));
+                    feats.add(f);
+                }
             }
             int month = java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1, now = Seasons.season(month);
             for (Seasons.Spot sp : Seasons.ALL) {
@@ -237,7 +258,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                 meSrc.setGeoJson(FeatureCollection.fromFeatures(mine));
             }
             if (!cameraPlaced || (fix && !cameraWasFix)) {
-                map.setCameraPosition(new CameraPosition.Builder().target(new LatLng(me[0], me[1])).zoom(12).build());
+                map.setCameraPosition(new CameraPosition.Builder().target(new LatLng(me[0], me[1])).zoom(7).build());
                 cameraPlaced = true;
                 cameraWasFix = fix;
             }
@@ -282,7 +303,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
     private void showInfo(Unlocks.Category c, String name, double d, double bearing, double radiusM) {
         String sound = c.sound;
         for (SoundSource s : player.sources) if (s.id.equals(c.sound)) sound = s.name;
-        boolean open = player.unlockInfo(c.id) != null;
+        boolean open = player.regionInfo(c.id) != null;
         String dist = d >= 1000 ? String.format(Locale.KOREA, "%.1fkm", d / 1000) : String.format(Locale.KOREA, "%.0fm", d);
         info.setTag("tapped");
         info.setText(c.emoji + " " + name + " · " + Unlocks.direction(bearing) + "쪽 " + dist

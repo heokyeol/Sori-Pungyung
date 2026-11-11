@@ -19,14 +19,14 @@ final class Unlocks {
         final String id, sound, place, hint, emoji;
         final double radiusM;
         final int color;
-        Category(String id, String sound, String place, double radiusM, String hint, String emoji, int color) {
+        Category(String id, String sound, String place, double radiusM, String hint, String emoji, int color) { // also used to draw regions
             this.id = id; this.sound = sound; this.place = place; this.radiusM = radiusM; this.hint = hint;
             this.emoji = emoji; this.color = color;
         }
     }
 
     static final Category[] ALL = {
-        new Category("airport", "u_airport", "공항", 3000, "영종도, 김포공항, 제주공항에 가면 열려요", "✈️", 0xFF8FB8FF),
+        new Category("airport", "u_airport", "공항", 3000, "인천 영종도에 가면 열려요", "✈️", 0xFF8FB8FF),
         new Category("library", "u_library", "도서관", 400, "별마당도서관, 파주 지혜의숲, 국립중앙도서관에 가면 열려요", "📚", 0xFFD9B98C),
         new Category("temple", "u_temple", "사찰", 1000, "경주 불국사, 합천 해인사, 순천 송광사에 가면 열려요", "🛕", 0xFFE8D27A),
         new Category("station", "u_station", "기차", 1000, "의왕 철도박물관이나 곡성 섬진강기차마을에 가면 열려요", "🚉", 0xFF9AA7B5),
@@ -153,6 +153,24 @@ final class Unlocks {
     static String direction(double bearingDeg) {
         String[] d = {"북", "북동", "동", "남동", "남", "남서", "서", "북서"};
         return d[(int) Math.round(((bearingDeg % 360) + 360) % 360 / 45) % 8];
+    }
+
+    /** Names of every place whose radius covers this position (hidden-landmark stamps). */
+    List<String> within(double lat, double lon) {
+        List<String> out = new ArrayList<>();
+        double cosLat = Math.cos(Math.toRadians(lat));
+        for (int i = 0; i < pos.size(); i++) {
+            int[] p = pos.get(i);
+            double dLat = p[0] / 1e5 - lat, dLon = (p[1] / 1e5 - lon) * cosLat;
+            if (Math.sqrt(dLat * dLat + dLon * dLon) * 111_195 <= radii.get(i)) out.add(names.get(i));
+        }
+        return out;
+    }
+
+    /** Category of the place with this name, or null. */
+    Category categoryOf(String placeName) {
+        for (int i = 0; i < names.size(); i++) if (names.get(i).equals(placeName)) return ALL[cat.get(i)];
+        return null;
     }
 
     /** Categories (not yet in {@code unlocked}) whose radius covers this position. */

@@ -122,7 +122,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
             case PRESET: applyPreset(c.arg.split(",")); voice.say("분위기를 바꿨어요"); break;
             case PLAY: player.play(); voice.say("재생할게요"); break;
             case STOP_ALL: player.stop(); voice.say("모두 껐어요"); break;
-            case NEARBY: lastSpot = null; voice.say(nearbyAnswer()); break;
+            case NEARBY: voice.say(nearbyAnswer()); break;
             case SEASON: voice.say(seasonAnswer()); break;
             case NAVIGATE: navigateTo(c.arg); break;
             default: voice.say("잘 모르겠어요. 빗소리 켜 줘, 수면 타이머 삼십 분처럼 말해 주세요"); break;
@@ -134,16 +134,16 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         double[] me = player.lastLocation();
         if (me == null) return "아직 위치를 모르겠어요";
         if (!player.placesLoaded()) return "장소 목록을 읽는 중이에요";
-        java.util.Set<String> locked = new java.util.HashSet<>();
-        for (Unlocks.Category cat : Unlocks.ALL) if (player.unlockInfo(cat.id) == null) locked.add(cat.id);
-        if (locked.isEmpty()) return "모든 소리를 이미 열었어요";
-        java.util.List<Unlocks.Place> near = player.unlocks.near(me[0], me[1], 600_000, 1, locked);
-        if (near.isEmpty()) return "가까운 곳에 열 수 있는 지역이 없어요";
-        Unlocks.Place p = near.get(0);
-        lastSuggested = p;
-        String sound = p.category.sound;
-        SoundSource src = sourceById(p.category.sound);
-        if (src != null) sound = src.name;
+        java.util.List<Regions.Region> near = Regions.nearest(me[0], me[1], player.regionsVisited(), 1);
+        if (near.isEmpty()) return "모든 지역 소리를 이미 열었어요";
+        Regions.Region r = near.get(0);
+        double[] pt = Regions.nearestPoint(r, me[0], me[1]);
+        lastSpot = pt;
+        lastSpotName = r.name;
+        lastSuggested = null;
+        SoundSource src = sourceById(r.sound);
+        String sound = src != null ? src.name : r.sound;
+        Unlocks.Place p = new Unlocks.Place(Unlocks.ALL[0], pt[0], pt[1], r.name, Regions.distance(r, me[0], me[1]), Regions.bearing(r, me[0], me[1]));
         String dist = p.distanceM >= 10_000 ? Math.round(p.distanceM / 1000) + "킬로미터"
                 : p.distanceM >= 1000 ? String.format(Locale.KOREA, "%.1f킬로미터", p.distanceM / 1000) : Math.round(p.distanceM / 10) * 10 + "미터";
         return Unlocks.direction(p.bearingDeg) + "쪽 " + dist + "에 " + p.name + subject(p.name) + " 있어요. 가면 " + sound + " 소리가 열려요";
@@ -175,8 +175,22 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
     private void navigateTo(String category) {
         double[] me = player.lastLocation();
         Unlocks.Place target = null;
+        if (category != null && category.startsWith("region:")) {
+            Regions.Region r = Regions.byId(category.substring(7));
+            double[] pt = me != null ? Regions.nearestPoint(r, me[0], me[1]) : r.points[0];
+            navigator.go(pt[0], pt[1], r.name, err -> main.post(() -> voice.say(err != null ? err : r.name + towards(r.name) + " 안내할게요")));
+            return;
+        }
         if (category != null) {
             if (me == null) { voice.say("아직 위치를 모르겠어요"); return; }
+            // A category whose sound belongs to a region (공항 → 영종도) goes to that region first.
+            Unlocks.Category cat = Unlocks.ALL[Unlocks.index(category)];
+            Regions.Region home = Regions.bySound(cat.sound);
+            if (home != null) {
+                double[] pt = Regions.nearestPoint(home, me[0], me[1]);
+                navigator.go(pt[0], pt[1], home.name, err -> main.post(() -> voice.say(err != null ? err : home.name + towards(home.name) + " 안내할게요")));
+                return;
+            }
             java.util.List<Unlocks.Place> near = player.unlocks.near(me[0], me[1], 600_000, 1, java.util.Collections.singleton(category));
             if (near.isEmpty()) { voice.say("가까운 곳에 그런 지역이 없어요"); return; }
             target = near.get(0);

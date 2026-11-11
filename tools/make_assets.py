@@ -96,7 +96,7 @@ def make_loop(o):
         g = (lo_g + hi_g) / 2
         if np.sqrt(np.mean(soft(loop * g) ** 2)) < target: lo_g = g
         else: hi_g = g
-    g = min(g, 30.0 if o["target"] in ("rain", "u_valley", "u_cafe", "u_library", "u_temple") or o["target"].startswith("s_") else 8.0)  # rain is noise-like, others would turn to hiss
+    g = min(g, 80.0 if o["target"] == "r_chuncheon" else 30.0 if o["target"] in ("rain", "u_valley", "u_cafe", "u_library", "u_temple") or o["target"].startswith(("s_", "r_")) else 8.0)  # rain is noise-like, others would turn to hiss
     loop = soft(loop * g)
     write_ogg(f"{ASSETS}/{o['target']}.ogg", loop)
     sf.write(f"{BUILD}/previews/loop-{o['target']}.wav", np.clip(loop[:20 * SR], -1, 1), SR, subtype="PCM_16")

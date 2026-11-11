@@ -100,6 +100,8 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
 
     @Override public void onOffSeason(String message) { announceUnlock(message); }
 
+    @Override public void onStamp(String placeName) { buildUi(); announceUnlock("◉ " + placeName + " 도장을 찍었어요"); }
+
     /** Default: a short toast. The car build stays quiet while driving. */
     protected void announceUnlock(String message) {
         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show();
@@ -216,7 +218,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         });
         panel.addView(places, matchWrap(px(12)));
 
-        Button dex = bigButton("소리 도감 (" + unlockedCount() + "/" + (Unlocks.ALL.length + Seasons.ALL.length) + ")", 0xFF2A3446);
+        Button dex = bigButton("소리 도감 (" + unlockedCount() + "/" + collectionTotal() + ")", 0xFF2A3446);
         dex.setOnClickListener(v -> showCollection());
         panel.addView(dex, matchWrap(px(12)));
 
@@ -266,46 +268,46 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     }
 
     private int unlockedCount() {
-        int n = player.spotsUnlocked().size();
-        for (Unlocks.Category c : Unlocks.ALL) if (player.unlockInfo(c.id) != null) n++;
-        return n;
+        return player.regionsVisited().size() + player.stamps().size() + player.spotsUnlocked().size();
     }
 
-    /** Collection of location-unlock sounds: where each was found, or a hint. */
+    private int collectionTotal() { return Regions.ALL.length + player.unlocks.size() + Seasons.ALL.length; }
+
+    private String soundName(String id) {
+        SoundSource s = sourceById(id);
+        return s != null ? s.name : id;
+    }
+
+    private String when(String info, java.text.SimpleDateFormat fmt) {
+        String[] p = info.split("\t");
+        return p.length > 1 ? fmt.format(new java.util.Date(Long.parseLong(p[1]))) : "";
+    }
+
+    /** Collection: region sounds, hidden-landmark stamps, seasonal events. */
     private void showCollection() {
         StringBuilder b = new StringBuilder();
         java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("M월 d일", Locale.KOREA);
-        for (Unlocks.Category c : Unlocks.ALL) {
-            String name = c.sound;
-            for (SoundSource s : sources) if (s.id.equals(c.sound)) name = s.name;
-            String info = player.unlockInfo(c.id);
-            if (info != null) {
-                String[] p = info.split("\t");
-                String when = p.length > 1 ? fmt.format(new java.util.Date(Long.parseLong(p[1]))) : "";
-                b.append("🔓 ").append(name).append("\n    ").append(p[0]).append(" · ").append(when).append("\n\n");
-            } else {
-                b.append("🔒 ").append(name).append("\n    ").append(c.hint).append("\n\n");
-            }
+        b.append("── 지역 소리 (").append(player.regionsVisited().size()).append("/").append(Regions.ALL.length).append(") ──\n\n");
+        for (Regions.Region r : Regions.ALL) {
+            String info = player.regionInfo(r.id);
+            if (info != null) b.append("🔓 ").append(r.name).append(" · ").append(soundName(r.sound)).append(" · ").append(when(info, fmt)).append("\n");
+            else b.append("🔒 ").append(r.name).append(" · ").append(soundName(r.sound)).append("\n");
         }
+        b.append("\n── 숨은 명소 도장 (").append(player.stamps().size()).append("/").append(player.unlocks.size()).append(") ──\n\n");
+        if (player.stamps().isEmpty()) b.append("아직 찾은 숨은 명소가 없어요.\n");
+        else for (String st : new java.util.TreeSet<>(player.stamps())) b.append("◉ ").append(st).append("\n");
+        b.append("공항, 기차, 도서관, 야구장처럼 이름난 곳 " + player.unlocks.size() + "곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 열려요.\n");
         int nowSeason = Seasons.season(java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1);
-        b.append("── 계절 명소 (지금은 ").append(Seasons.SEASON_NAMES[nowSeason]).append(") ──\n\n");
+        b.append("\n── 계절 명소 (지금은 ").append(Seasons.SEASON_NAMES[nowSeason]).append(") ──\n\n");
         for (int season = 0; season < 4; season++) {
             for (Seasons.Spot sp : Seasons.ALL) {
                 if (sp.season != season) continue;
-                String name = sp.sound;
-                for (SoundSource s : sources) if (s.id.equals(sp.sound)) name = s.name;
                 String info = player.spotInfo(sp.id);
-                if (info != null) {
-                    String[] p = info.split("\t");
-                    String when = p.length > 1 ? fmt.format(new java.util.Date(Long.parseLong(p[1]))) : "";
-                    b.append("🔓 ").append(name).append("\n    ").append(sp.place).append(" · ").append(when).append("\n\n");
-                } else {
-                    b.append(sp.season == nowSeason ? "◆ " : "🔒 ").append(name).append("\n    ").append(sp.hint())
-                     .append(sp.season == nowSeason ? " · 지금이 그 계절이에요" : "").append("\n\n");
-                }
+                if (info != null) b.append("🔓 ").append(soundName(sp.sound)).append(" · ").append(sp.place).append(" · ").append(when(info, fmt)).append("\n");
+                else b.append(sp.season == nowSeason ? "◆ " : "🔒 ").append(soundName(sp.sound)).append(" · ").append(sp.hint()).append("\n");
             }
         }
-        b.append(player.locationPermitted() ? "위치는 앱이 켜져 있거나 재생 중일 때만 확인해요."
+        b.append("\n").append(player.locationPermitted() ? "위치는 앱이 켜져 있거나 재생 중일 때만 확인해요."
                 : "위치 권한이 꺼져 있어서 소리가 열리지 않아요. 설정에서 위치 권한을 켜 주세요.");
         TextView tv = new TextView(this);
         tv.setText(b.toString());
