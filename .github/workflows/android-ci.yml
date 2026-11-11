@@ -1,0 +1,45 @@
+name: Android CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ['**']   # PR 없이 브랜치로 푸시하므로 모든 브랜치에서 빌드·테스트
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gradle 프로젝트 존재 확인
+        id: check
+        run: |
+          if [ -f gradlew ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; echo "아직 Android 프로젝트가 없어 빌드를 건너뜁니다."; fi
+
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.exists == 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.check.outputs.exists == 'true'
+
+      - name: 빌드
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: 단위 테스트
+        if: steps.check.outputs.exists == 'true'
+        run: ./gradlew test
+
+      - name: APK 업로드
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: "**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: ignore

@@ -1,9 +1,41 @@
-# Build outputs and local tooling
-build/
+# ---- Android / Gradle ----
 .gradle/
-app/build/
+build/
+*/build/
 local.properties
+captures/
+.externalNativeBuild/
+.cxx/
 *.apk
+*.aab
+*.ap_
+*.dex
+output-metadata.json
+
+# ---- Android Studio / IntelliJ ----
+.idea/*
+!.idea/codeStyles/
+*.iml
+.navigation/
+
+# ---- 서명 키 / 비밀값 (절대 커밋 금지) ----
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+google-services.json
+.env
+.env.*
+
+# ---- OS ----
 .DS_Store
+Thumbs.db
+
+# ---- Claude 개인 설정 (공용 설정 .claude/settings.json 은 커밋) ----
+.claude/settings.local.json
+CLAUDE.local.md
+
+# ---- 사운드드라이브 ----
 # Web audio is generated from app/src/main/assets by tools/make_web_assets.py (≈50 MB)
 web/audio/
+.DS_Store
