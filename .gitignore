@@ -1,0 +1,9 @@
+# Build outputs and local tooling
+build/
+.gradle/
+app/build/
+local.properties
+*.apk
+.DS_Store
+# Web audio is generated from app/src/main/assets by tools/make_web_assets.py (≈50 MB)
+web/audio/

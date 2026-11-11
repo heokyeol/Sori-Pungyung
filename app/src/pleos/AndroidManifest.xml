@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.type.automotive" android:required="true"/>
+    <uses-permission android:name="android.car.permission.CAR_SPEED"/>
+    <uses-permission android:name="pleos.car.permission.CAR_SPEED"/>
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE"/>
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS"/>
+    <uses-permission android:name="pleos.car.permission.FUSED_LOCATION"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE"/>
+    <uses-permission android:name="pleos.car.permission.CAR_WINDOWS"/>
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS"/>
+    <application>
+        <activity android:name=".MainActivity">
+            <!-- 주행 중 화면 제한 대응 표시. 실제로 허용되는지는 Pleos 정책 확인 필요. -->
+            <meta-data android:name="distractionOptimized" android:value="true"/>
+        </activity>
+    </application>
+</manifest>

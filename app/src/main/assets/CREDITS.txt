@@ -1,0 +1,142 @@
+사운드드라이브 소리 출처 / Sound credits
+
+[rain] "Soft rain on a tile roof" — richwise — CC0 1.0
+  https://freesound.org/people/richwise/sounds/466241/
+  Edited: 90 s from 90 s, seamless loop, 48 kHz, level normalized
+[wind] "a gentle breeze, wind 3" — mario1298 — CC0 1.0
+  https://freesound.org/people/mario1298/sounds/181252/
+  Edited: 90 s from 20 s, seamless loop, 48 kHz, level normalized
+[fire] "campfire.wav" — Spandau — CC0 1.0
+  https://freesound.org/people/Spandau/sounds/40699/
+  Edited: 90 s from 15 s, seamless loop, 48 kHz, level normalized
+[pad] "Angelic Pad Loop.wav" — PhonZz — CC0 1.0
+  https://freesound.org/people/PhonZz/sounds/242773/
+  Edited: 90 s from 550 s, seamless loop, 48 kHz, level normalized
+[dove] "Streptopelia orientalis.ogg" — boppochan — CC BY-SA 3.0
+  https://commons.wikimedia.org/wiki/File:Streptopelia_orientalis.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[sparrow] "House sparrow.wav" — BeeProductive — CC0 1.0
+  https://freesound.org/people/BeeProductive/sounds/383160/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[magpie] "Magpie.wav" — straget — CC0 1.0
+  https://freesound.org/people/straget/sounds/418110/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[tit] "Great Tit.wav" — straget — CC0 1.0
+  https://freesound.org/people/straget/sounds/418102/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[bulbul] "Hypsipetes-amaurotis-2025-05-20-282646657.ogg" — karliatje — CC BY 4.0
+  https://commons.wikimedia.org/wiki/File:Hypsipetes-amaurotis-2025-05-20-282646657.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[bulbul] "Hypsipetes-amaurotis-2025-05-20-282619241.ogg" — karliatje — CC BY 4.0
+  https://commons.wikimedia.org/wiki/File:Hypsipetes-amaurotis-2025-05-20-282619241.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[bulbul] "Hypsipetes-amaurotis-2025-05-20-282617142.ogg" — karliatje — CC BY 4.0
+  https://commons.wikimedia.org/wiki/File:Hypsipetes-amaurotis-2025-05-20-282617142.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[oriole] "Blacknapedoriole.ogg" — L. Shyamal — CC BY-SA 3.0
+  https://commons.wikimedia.org/wiki/File:Blacknapedoriole.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[warbler] "bush_warbler.wav" — Heigh-hoo — CC0 1.0
+  https://freesound.org/people/Heigh-hoo/sounds/32295/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[woodpecker] "Great Spotted Woodpecker" — naturenotesuk — CC0 1.0
+  https://freesound.org/people/naturenotesuk/sounds/428146/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[cuckoo] "CUCKOO - 1" — SamuelGremaud — CC0 1.0
+  https://freesound.org/people/SamuelGremaud/sounds/517779/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[cuckoo] "CUCKOO - 3" — SamuelGremaud — CC0 1.0
+  https://freesound.org/people/SamuelGremaud/sounds/517780/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[cuckoo] "CUCKOO - 2" — SamuelGremaud — CC0 1.0
+  https://freesound.org/people/SamuelGremaud/sounds/517781/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[owl] "Eurasian eagle-owl (Bubo bubo) - Bird - Animal - Forest - Uhu - Eulen - Greifvögel - Vögel - Wald" — IchBinChrist — CC0 1.0
+  https://freesound.org/people/IchBinChrist/sounds/400147/
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[scops] "Otus sunia.ogg" — Raghu — Public domain
+  https://commons.wikimedia.org/wiki/File:Otus_sunia.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[nightjar] "Jungle nightjar Mt Abu.ogg" — Shyamal — CC0
+  https://commons.wikimedia.org/wiki/File:Jungle_nightjar_Mt_Abu.ogg
+  Edited: call clips cut out, high-passed, mono, 48 kHz
+[u_airport] "Plane Interior" — Vurca — CC0 1.0
+  https://freesound.org/people/Vurca/sounds/341591/
+  Edited: 90 s from 60 s, seamless loop, 48 kHz, level normalized
+[u_library] "Library ambience" — morosopher — CC0 1.0
+  https://freesound.org/people/morosopher/sounds/173344/
+  Edited: 90 s from 260 s, seamless loop, 48 kHz, level normalized
+[u_temple] "Wind chimes 1" — giddster — CC0 1.0
+  https://freesound.org/people/giddster/sounds/437337/
+  Edited: 85 s from 0 s, seamless loop, 48 kHz, level normalized
+[u_station] "Interieur_train" — FloLogramm — CC0 1.0
+  https://freesound.org/people/FloLogramm/sounds/347425/
+  Edited: 29 s from 0 s, seamless loop, 48 kHz, level normalized
+[u_valley] "Relaxing, Mountains, Rivers, Streams, Running Water" — INNORECORDS — CC0 1.0
+  https://freesound.org/people/INNORECORDS/sounds/469009/
+  Edited: 90 s from 195 s, seamless loop, 48 kHz, level normalized
+[u_harbor] "harbour, seagulls-48k.wav" — Further_Roman — CC0 1.0
+  https://freesound.org/people/Further_Roman/sounds/208074/
+  Edited: 90 s from 0 s, seamless loop, 48 kHz, level normalized
+[u_cafe] "People talking at cafe ambience" — priesjensen — CC0 1.0
+  https://freesound.org/people/priesjensen/sounds/482990/
+  Edited: 90 s from 10 s, seamless loop, 48 kHz, level normalized
+[u_baseball] "korea_baseball.flac" — nikitralala — CC0 1.0
+  https://freesound.org/people/nikitralala/sounds/239936/
+  Edited: 90 s from 45 s, seamless loop, 48 kHz, level normalized
+[thunder] "Thunderstorm after hot summer day 17 minutes 01 of 04.ogg" — stephan — Public domain
+  https://commons.wikimedia.org/wiki/File:Thunderstorm_after_hot_summer_day_17_minutes_01_of_04.ogg
+  Edited: 90 s from 60 s, seamless loop, 48 kHz, level normalized
+[cmb] "Sounds of the Ancient Universe (PIA16881).wav" — ESA/NASA/JPL-Caltech — Public domain
+  https://commons.wikimedia.org/wiki/File:Sounds_of_the_Ancient_Universe_(PIA16881).wav
+  Edited: 60 s from 0 s, seamless loop, 48 kHz, level normalized
+[saturn] "Eerie Sounds of Saturn’s Radio Emissions (PIA07966).wav" — NASA/JPL/University of Iowa — Public domain
+  https://commons.wikimedia.org/wiki/File:Eerie_Sounds_of_Saturn%E2%80%99s_Radio_Emissions_(PIA07966).wav
+  Edited: 69 s from 0 s, seamless loop, 48 kHz, level normalized
+[jupiter] "Cassini RPWS Jupiter 010104.ogg" — NASA — Public domain
+  https://commons.wikimedia.org/wiki/File:Cassini_RPWS_Jupiter_010104.ogg
+  Edited: 83 s from 0 s, seamless loop, 48 kHz, level normalized
+[s_jinhae] "Field atmosphere in Gizeux, Loire Valley, French countryside" — nomadas — CC0 1.0
+  https://freesound.org/people/nomadas/sounds/731819/
+  Edited: 90 s from 40 s, seamless loop, 48 kHz, level normalized
+[s_boseong] "Wind blowing in the countryside during spring, Tall Grass Prairie, Oklahoma, USA" — felix.blume — CC0 1.0
+  https://freesound.org/people/felix.blume/sounds/215414/
+  Edited: 90 s from 15 s, seamless loop, 48 kHz, level normalized
+[s_gasiri] "Single Skylark" — Kinoton — CC0 1.0
+  https://freesound.org/people/Kinoton/sounds/387426/
+  Edited: 71 s from 0 s, seamless loop, 48 kHz, level normalized
+[s_yangyang] "Beach goers and surf" — John Sipos — CC0 1.0
+  https://freesound.org/people/John Sipos/sounds/191444/
+  Edited: 90 s from 15 s, seamless loop, 48 kHz, level normalized
+[s_haeundae] "Summer beach sounds 1" — peterjohncooper — CC0 1.0
+  https://freesound.org/people/peterjohncooper/sounds/580707/
+  Edited: 90 s from 0 s, seamless loop, 48 kHz, level normalized
+[s_damyang] "Forêt de Bambou // Bamboo forest" — indieground — CC0 1.0
+  https://freesound.org/people/indieground/sounds/404688/
+  Edited: 90 s from 340 s, seamless loop, 48 kHz, level normalized
+[s_maisan] "01-20 Footsteps, sneakers on dry leaves.wav" — SpliceSound — CC0 1.0
+  https://freesound.org/people/SpliceSound/sounds/218305/
+  Edited: 90 s from 0 s, seamless loop, 48 kHz, level normalized
+[s_naejangsan] "Autumn wind grabbs the trees.wav" — straget — CC0 1.0
+  https://freesound.org/people/straget/sounds/403764/
+  Edited: 90 s from 80 s, seamless loop, 48 kHz, level normalized
+[s_mindungsan] "Wind in grass, microphone close to the ground, with muffled wind, bird singing and road hum recorded in Pampa, Texas" — felix.blume — CC0 1.0
+  https://freesound.org/people/felix.blume/sounds/666180/
+  Edited: 90 s from 110 s, seamless loop, 48 kHz, level normalized
+[s_daegwallyeong] "Howling winter storm ambient sounds" — DBlover — CC0 1.0
+  https://freesound.org/people/DBlover/sounds/505999/
+  Edited: 90 s from 105 s, seamless loop, 48 kHz, level normalized
+[s_pyeongchang] "french ski ressort down the slopes" — bruno.auzet — CC0 1.0
+  https://freesound.org/people/bruno.auzet/sounds/558792/
+  Edited: 90 s from 15 s, seamless loop, 48 kHz, level normalized
+[s_hwacheon] "Ice - Lake fractures" — Vrymaa — CC0 1.0
+  https://freesound.org/people/Vrymaa/sounds/737896/
+  Edited: 54 s from 0 s, seamless loop, 48 kHz, level normalized
+[waves] "Ocean Waves on a Tropical Beach" — Jarrod stanley — CC0 1.0
+  https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg
+  Edited: 90 s from 75 s, seamless loop, 48 kHz, level normalized
+
+CC BY-SA recordings: the edited versions in this app are shared under the same license.
+
+장소 데이터 / Place data: © OpenStreetMap contributors, ODbL 1.0 — https://www.openstreetmap.org/copyright
+  Extracted once (airports, libraries, temples, stations, valleys/national parks, beaches/harbours, cafes, baseball stadiums) into assets/places.tsv.

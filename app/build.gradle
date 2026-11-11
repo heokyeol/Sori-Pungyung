@@ -1,0 +1,26 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'dev.homesev.sounddrive'
+    compileSdk 34
+    useLibrary 'android.car'
+    defaultConfig { applicationId 'dev.homesev.sounddrive'; minSdk 28; targetSdk 34; versionCode 1; versionName '0.1'
+        ndk { abiFilters 'arm64-v8a' } // Galaxy phones and the Pleos head unit/emulator are 64-bit ARM; keeps the map engine small
+    }
+    packaging { jniLibs { useLegacyPackaging true } } // store the map engine compressed in the APK
+    androidResources { noCompress 'ogg' } // AssetLoop opens assets by file descriptor
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    // pleos = 차량(Pleos) 화면용, galaxy = 일반 휴대폰용. 소리 엔진(src/main)은 공유.
+    flavorDimensions 'target'
+    productFlavors {
+        pleos { dimension 'target'; versionCode 13; versionName '0.13' }
+        galaxy { dimension 'target'; applicationIdSuffix '.galaxy'; versionCode 9; versionName '0.9' }
+    }
+}
+dependencies {
+    implementation 'org.maplibre.gl:android-sdk:12.3.1' // map view (OpenFreeMap tiles, no API key)
+    pleosImplementation 'ai.pleos.playground:Vehicle:2.3.2'
+    pleosImplementation 'ai.pleos.playground:FusedLocation:1.1.3'
+    pleosImplementation 'ai.pleos.playground:NaviHelper:3.0.5'
+    pleosImplementation 'ai.pleos.playground:SpeechToText:3.3.1'
+    pleosImplementation 'ai.pleos.playground:TextToSpeech:3.3.1'
+}
