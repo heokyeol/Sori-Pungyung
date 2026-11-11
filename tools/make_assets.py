@@ -2,12 +2,24 @@
   loops → app/src/main/assets/<id>.ogg   (90 s seamless stereo loop, 48 kHz)
   calls → app/src/main/assets/birds_<id>.ogg + birds_index.txt (cut bird calls, mono)
   previews → build/previews/*.wav
-Usage: python make_assets.py <build dir> <assets dir>"""
+Usage: python make_assets.py <build dir> <assets dir> [--force]
+
+Existing outputs are kept as they are (re-encoding changes the bytes and bloats git);
+only missing sounds are made. Pass --force to rebuild everything."""
 import json, os, sys
 import numpy as np
 import soundfile as sf
 
 BUILD, ASSETS = sys.argv[1], sys.argv[2]
+FORCE = "--force" in sys.argv[3:]
+
+# Keep the "Edited:" note of sounds we don't rebuild, read from the existing credits file.
+OLD_EDIT = {}
+if os.path.exists(f"{ASSETS}/CREDITS.txt"):
+    cur = None
+    for line in open(f"{ASSETS}/CREDITS.txt"):
+        if line.startswith("["): cur = line[1:line.index("]")]
+        elif line.strip().startswith("Edited:") and cur: OLD_EDIT.setdefault(cur, line.strip()[len("Edited: "):])
 SR = 48000
 os.makedirs(ASSETS, exist_ok=True)
 os.makedirs(f"{BUILD}/previews", exist_ok=True)
@@ -65,6 +77,9 @@ def stretch_texture(x, seconds, grain=4.0, fade=1.5, seed=1):
 
 
 def make_loop(o):
+    if not FORCE and os.path.exists(f"{ASSETS}/{o['target']}.ogg"):
+        o["excerpt"] = OLD_EDIT.get(o["target"], "seamless loop, 48 kHz, level normalized")
+        return
     x = load(f"{BUILD}/dl/src/{o['file']}")
     if x.shape[1] == 1: x = np.repeat(x, 2, axis=1)
     x = x[:, :2]
@@ -134,6 +149,11 @@ def find_calls(x, fc, gap, k=4, lp=None):
 
 
 def make_calls(target, items):
+    if not FORCE and os.path.exists(f"{ASSETS}/birds_{target}.ogg"):
+        old = [l for l in open(f"{ASSETS}/birds_index.txt") if l.split()[:1] == [target]] if os.path.exists(f"{ASSETS}/birds_index.txt") else []
+        if old:
+            for o in items: o["excerpt"] = OLD_EDIT.get(target, "call clips cut out, high-passed, mono, 48 kHz")
+            return old[0].strip()
     clips = []
     fc, gap, k, lp = CALL_CFG.get(target, DEFAULT_CALL)
     for o in items:
