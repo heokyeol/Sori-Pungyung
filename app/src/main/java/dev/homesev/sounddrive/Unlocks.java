@@ -26,14 +26,14 @@ final class Unlocks {
     }
 
     static final Category[] ALL = {
-        new Category("airport", "u_airport", "공항", 3000, "인천 영종도에 가면 열려요", "✈️", 0xFF8FB8FF),
-        new Category("library", "u_library", "도서관", 400, "별마당도서관, 파주 지혜의숲, 국립중앙도서관에 가면 열려요", "📚", 0xFFD9B98C),
-        new Category("temple", "u_temple", "사찰", 1000, "경주 불국사, 합천 해인사, 순천 송광사에 가면 열려요", "🛕", 0xFFE8D27A),
-        new Category("station", "u_station", "기차", 1000, "의왕 철도박물관이나 곡성 섬진강기차마을에 가면 열려요", "🚉", 0xFF9AA7B5),
-        new Category("valley", "u_valley", "계곡", 2000, "설악산 비선대, 지리산 뱀사골, 가평 용추계곡에 가면 열려요", "🏞️", 0xFF6FD3E0),
-        new Category("harbor", "u_harbor", "항구", 1000, "부산 자갈치, 인천 연안부두, 목포항에 가면 열려요", "⚓", 0xFF7FB0D8),
-        new Category("cafe", "u_cafe", "카페거리", 1000, "강릉 안목 커피거리나 성수동 카페거리에 가면 열려요", "☕", 0xFFC79A7A),
-        new Category("baseball", "u_baseball", "야구장", 500, "프로야구 홈구장(잠실, 사직, 고척 등)에 가면 열려요", "⚾", 0xFFFF8A80),
+        new Category("airport", "u_airport", "공항", 3000, "인천 영종도에 가면 수집할 수 있어요", "✈️", 0xFF8FB8FF),
+        new Category("library", "u_library", "도서관", 400, "별마당도서관, 파주 지혜의숲, 국립중앙도서관에 가면 수집할 수 있어요", "📚", 0xFFD9B98C),
+        new Category("temple", "u_temple", "사찰", 1000, "경주 불국사, 합천 해인사, 순천 송광사에 가면 수집할 수 있어요", "🛕", 0xFFE8D27A),
+        new Category("station", "u_station", "기차", 1000, "의왕 철도박물관이나 곡성 섬진강기차마을에 가면 수집할 수 있어요", "🚉", 0xFF9AA7B5),
+        new Category("valley", "u_valley", "계곡", 2000, "설악산 비선대, 지리산 뱀사골, 가평 용추계곡에 가면 수집할 수 있어요", "🏞️", 0xFF6FD3E0),
+        new Category("harbor", "u_harbor", "항구", 1000, "부산 자갈치, 인천 연안부두, 목포항에 가면 수집할 수 있어요", "⚓", 0xFF7FB0D8),
+        new Category("cafe", "u_cafe", "카페거리", 1000, "강릉 안목 커피거리나 성수동 카페거리에 가면 수집할 수 있어요", "☕", 0xFFC79A7A),
+        new Category("baseball", "u_baseball", "야구장", 500, "프로야구 홈구장(잠실, 사직, 고척 등)에 가면 수집할 수 있어요", "⚾", 0xFFFF8A80),
     };
 
     /** A newly reached category and the nearest place that triggered it. */

@@ -167,7 +167,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                     info.setText(String.format(Locale.KOREA, "%s · %s쪽 %.0fkm\n%s: %s", spot.place,
                             Unlocks.direction(bearing(me[0], me[1], p.latitude(), p.longitude())),
                             distance(me[0], me[1], p.latitude(), p.longitude()) / 1000,
-                            player.spotInfo(spot.id) != null ? "이미 열린 소리" : spot.seasonName() + "에 가면 열리는 소리", sound));
+                            player.spotInfo(spot.id) != null ? "이미 수집한 소리" : spot.seasonName() + "에 가면 수집할 수 있는 소리", sound));
                     return true;
                 }
                 Regions.Region rg = Regions.byId(catId.startsWith("region:") ? catId.substring(7) : catId);
@@ -213,7 +213,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
     }
 
     private void refreshData() {
-        filterBtn.setText(showAll ? "전부 보기" : "안 열린 것만");
+        filterBtn.setText(showAll ? "전부 보기" : "아직 못 모은 것만");
         double[] me = here();
         boolean fix = player.lastLocation() != null;
         List<Unlocks.Place> near = regionPlaces(me, 12);
@@ -221,7 +221,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         if (info.getTag() == null) {
             String head = !showAll && player.regionsVisited().size() == Regions.ALL.length ? "모든 지역 소리를 열었어요!"
                     : near.isEmpty() ? "300km 안에는 열 수 있는 지역이 없어요. 지도에서 찾아보세요."
-                    : "점을 누르면 어떤 소리가 열리는지 보여 줘요.";
+                    : "점을 누르면 어떤 소리를 수집할 수 있는지 보여 줘요.";
             info.setText((fix ? head : "위치를 아직 못 받았어요. 서울시청 기준으로 보여 줘요.") + seasonLine(me));
         }
         if (style != null) {
@@ -308,7 +308,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         String dist = d >= 1000 ? String.format(Locale.KOREA, "%.1fkm", d / 1000) : String.format(Locale.KOREA, "%.0fm", d);
         info.setTag("tapped");
         info.setText(name + " · " + Unlocks.direction(bearing) + "쪽 " + dist
-                + "\n" + (open ? "이미 열린 소리: " + sound : "가면 열리는 소리: " + sound
+                + "\n" + (open ? "이미 수집한 소리: " + sound : "가면 수집할 수 있는 소리: " + sound
                 + (radiusM >= 1000 ? String.format(Locale.KOREA, " (%.0fkm 안으로)", radiusM / 1000) : String.format(Locale.KOREA, " (%.0fm 안으로)", radiusM))));
     }
 
@@ -334,7 +334,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
     @Override public void onUnlocked(String soundName, String placeName) {
         info.setTag(null);
         refreshData();
-        Toast.makeText(this, placeName + "에서 '" + soundName + "' 소리가 열렸어요", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, placeName + "에서 '" + soundName + "' 소리를 수집했어요", Toast.LENGTH_LONG).show();
     }
 
     // ── Lifecycle (MapView needs every call) ───────────────────────────────

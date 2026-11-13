@@ -132,7 +132,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         }
     }
 
-    /** "북동쪽 1.2킬로미터에 ○○사가 있어요. 가면 사찰 풍경 소리가 열려요." */
+    /** "북동쪽 1.2킬로미터에 ○○사가 있어요. 가면 사찰 풍경 소리를 수집할 수 있어요." */
     private String nearbyAnswer() {
         double[] me = player.lastLocation();
         if (me == null) return "아직 위치를 모르겠어요";
@@ -149,10 +149,10 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         Unlocks.Place p = new Unlocks.Place(Unlocks.ALL[0], pt[0], pt[1], r.name, Regions.distance(r, me[0], me[1]), Regions.bearing(r, me[0], me[1]));
         String dist = p.distanceM >= 10_000 ? Math.round(p.distanceM / 1000) + "킬로미터"
                 : p.distanceM >= 1000 ? String.format(Locale.KOREA, "%.1f킬로미터", p.distanceM / 1000) : Math.round(p.distanceM / 10) * 10 + "미터";
-        return Unlocks.direction(p.bearingDeg) + "쪽 " + dist + "에 " + p.name + subject(p.name) + " 있어요. 가면 " + sound + " 소리가 열려요";
+        return Unlocks.direction(p.bearingDeg) + "쪽 " + dist + "에 " + p.name + subject(p.name) + " 있어요. 가면 " + sound + " 소리를 수집할 수 있어요";
     }
 
-    /** "이번 가을엔 정선 민둥산이 가장 가까워요. 동쪽 162킬로미터예요. 가면 억새 바람 소리가 열려요." */
+    /** "이번 가을엔 정선 민둥산이 가장 가까워요. 동쪽 162킬로미터예요. 가면 억새 바람 소리를 수집할 수 있어요." */
     private String seasonAnswer() {
         double[] me = player.lastLocation();
         int month = java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1;
@@ -165,7 +165,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         SoundSource src = sourceById(sp.sound);
         double km = Seasons.distance(sp, me[0], me[1]) / 1000;
         return "이번 " + season + "엔 " + sp.place + subject(sp.place) + " 가장 가까워요. " + Unlocks.direction(Seasons.bearing(sp, me[0], me[1]))
-                + "쪽 " + Math.round(km) + "킬로미터예요. 가면 " + (src != null ? src.name : "새") + " 소리가 열려요";
+                + "쪽 " + Math.round(km) + "킬로미터예요. 가면 " + (src != null ? src.name : "새") + " 소리를 수집할 수 있어요";
     }
 
     /** At a landmark out of season: say it (safe while driving) besides the usual notice. */
@@ -234,7 +234,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
     /** Unlocks are also spoken, which is safe while driving. */
     @Override public void onUnlocked(String soundName, String placeName) {
         super.onUnlocked(soundName, placeName);
-        voice.say(placeName + " 근처에서 " + soundName + " 소리가 열렸어요");
+        voice.say(placeName + " 근처에서 " + soundName + " 소리를 수집했어요");
     }
 
     /** No pop-ups while driving: keep it in the status line and show it once parked. */

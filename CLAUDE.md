@@ -8,7 +8,7 @@ Claude Code는 이 저장소에서 작업을 시작할 때 이 파일을 자동�
 
 - 현대자동차 공모전 출품작: **Pleos(플레오스) 디스플레이/시스템용 안드로이드 앱**
 - 대상 플랫폼: Android Automotive OS(AAOS) 기반 차량 인포테인먼트
-- 언어/빌드: 자유 (Java·Kotlin 모두 가능). 지금 앱(사운드드라이브)은 Java + Gradle
+- 언어/빌드: 자유 (Java·Kotlin 모두 가능). 지금 앱(소리풍경)은 Java + Gradle
 - 공모전에서 제공하는 SDK·에뮬레이터·가이드라인이 있으면 `docs/pleos-notes.md`에 정리하고, 그 내용을 이 파일의 일반 지식보다 우선한다.
 
 ## 팀원과 담당

@@ -321,7 +321,7 @@ final class Player {
         for (SoundSource src : sources) if (src.id.equals(s.sound)) soundName = src.name;
         char last = s.place.charAt(s.place.length() - 1);
         String topic = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0 ? "은 " : "는 ";
-        String msg = s.place + topic + s.seasonName() + "에 다시 오면 '" + soundName + "' 소리가 열려요";
+        String msg = s.place + topic + s.seasonName() + "에 다시 오면 '" + soundName + "' 소리를 수집할 수 있어요";
         for (Listener l : new ArrayList<>(listeners)) l.onOffSeason(msg);
     }
 
@@ -419,7 +419,7 @@ final class Player {
                 : String.format(Locale.KOREA, "수면 타이머 %d분 남음", (sleepRemainingMs() + 59_999) / 60_000);
         return new Notification.Builder(app, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_media_play)
-                .setContentTitle("사운드드라이브")
+                .setContentTitle("소리풍경")
                 .setContentText(text)
                 .setContentIntent(openPi)
                 .setOngoing(true)

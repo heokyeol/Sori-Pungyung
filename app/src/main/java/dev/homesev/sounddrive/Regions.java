@@ -18,7 +18,7 @@ final class Regions {
         Region(String id, String name, String sound, String emoji, double radiusM, double[]... points) {
             this.id = id; this.name = name; this.sound = sound; this.emoji = emoji; this.radiusM = radiusM; this.points = points;
         }
-        String hint() { return name + "에 가면 열려요"; }
+        String hint() { return name + "에 가면 수집할 수 있어요"; }
     }
 
     static final Region[] ALL = {

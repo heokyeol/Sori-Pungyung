@@ -1,4 +1,4 @@
-// 사운드드라이브 웹판 — same sounds and features as the Galaxy app, in the browser.
+// 소리풍경. 웹판 — same sounds and features as the Galaxy app, in the browser.
 // Web Audio HRTF panning, real recordings (see CREDITS.txt), offline place list for unlocks.
 "use strict";
 
@@ -99,14 +99,14 @@ const BIRDS = [
   ["owl", "부엉이", 1, 10], ["scops", "소쩍새", 1, 12], ["nightjar", "쏙독새", 1, 14],
 ].map(([id, name, night, gap]) => ({ id, name, night: !!night, gap }));
 const CATS = [
-  { id: "airport", place: "공항", r: 3000, emoji: "✈️", color: "#8FB8FF", hint: "영종도, 김포공항, 제주공항에 가면 열려요" },
-  { id: "library", place: "도서관", r: 400, emoji: "📚", color: "#D9B98C", hint: "별마당도서관, 파주 지혜의숲, 국립중앙도서관에 가면 열려요" },
-  { id: "temple", place: "사찰", r: 1000, emoji: "🛕", color: "#E8D27A", hint: "경주 불국사, 합천 해인사, 순천 송광사에 가면 열려요" },
-  { id: "station", place: "기차", r: 1000, emoji: "🚉", color: "#9AA7B5", hint: "의왕 철도박물관이나 곡성 섬진강기차마을에 가면 열려요" },
-  { id: "valley", place: "계곡", r: 2000, emoji: "🏞️", color: "#6FD3E0", hint: "설악산 비선대, 지리산 뱀사골, 가평 용추계곡에 가면 열려요" },
-  { id: "harbor", place: "항구", r: 1000, emoji: "⚓", color: "#7FB0D8", hint: "부산 자갈치, 인천 연안부두, 목포항에 가면 열려요" },
-  { id: "cafe", place: "카페거리", r: 1000, emoji: "☕", color: "#C79A7A", hint: "강릉 안목 커피거리나 성수동 카페거리에 가면 열려요" },
-  { id: "baseball", place: "야구장", r: 500, emoji: "⚾", color: "#FF8A80", hint: "프로야구 홈구장(잠실, 사직, 고척 등)에 가면 열려요" },
+  { id: "airport", place: "공항", r: 3000, emoji: "✈️", color: "#8FB8FF", hint: "영종도, 김포공항, 제주공항에 가면 수집할 수 있어요" },
+  { id: "library", place: "도서관", r: 400, emoji: "📚", color: "#D9B98C", hint: "별마당도서관, 파주 지혜의숲, 국립중앙도서관에 가면 수집할 수 있어요" },
+  { id: "temple", place: "사찰", r: 1000, emoji: "🛕", color: "#E8D27A", hint: "경주 불국사, 합천 해인사, 순천 송광사에 가면 수집할 수 있어요" },
+  { id: "station", place: "기차", r: 1000, emoji: "🚉", color: "#9AA7B5", hint: "의왕 철도박물관이나 곡성 섬진강기차마을에 가면 수집할 수 있어요" },
+  { id: "valley", place: "계곡", r: 2000, emoji: "🏞️", color: "#6FD3E0", hint: "설악산 비선대, 지리산 뱀사골, 가평 용추계곡에 가면 수집할 수 있어요" },
+  { id: "harbor", place: "항구", r: 1000, emoji: "⚓", color: "#7FB0D8", hint: "부산 자갈치, 인천 연안부두, 목포항에 가면 수집할 수 있어요" },
+  { id: "cafe", place: "카페거리", r: 1000, emoji: "☕", color: "#C79A7A", hint: "강릉 안목 커피거리나 성수동 카페거리에 가면 수집할 수 있어요" },
+  { id: "baseball", place: "야구장", r: 500, emoji: "⚾", color: "#FF8A80", hint: "프로야구 홈구장(잠실, 사직, 고척 등)에 가면 수집할 수 있어요" },
 ];
 const SLEEP = [0, 15, 30, 60, 90], FADE_MS = 10 * 60e3;
 function defaultPerch(i) { const a = (Math.PI * 2 * i) / 12 - Math.PI / 2; return [Math.cos(a) * 0.3, Math.sin(a) * 0.3]; }
@@ -832,12 +832,12 @@ $("dex").onclick = () => {
   L.push("", `── 숨은 명소 도장 (${Object.keys(S.stamps).length}/${places ? places.length : 25}) ──`);
   const st = Object.keys(S.stamps).sort();
   L.push(...(st.length ? st.map((n) => "◉  " + n) : ["아직 찾은 숨은 명소가 없어요."]));
-  L.push(`공항, 기차, 도서관, 야구장처럼 이름난 곳 ${places ? places.length : 25}곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 열려요.`);
+  L.push(`공항, 기차, 도서관, 야구장처럼 이름난 곳 ${places ? places.length : 25}곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 수집할 수 있어요.`);
   const now = seasonOf(new Date().getMonth() + 1);
   L.push("", `── 계절 명소 (지금은 ${SEASONS[now]}) ──`);
   for (const sp of SPOTS) {
     const s = SOUNDS.find((x) => x.spot === sp.id), u = S.spots[sp.id];
-    L.push(u ? `●  ${s.name} · ${sp.place} · ${day(u.at)}` : `${sp.season === now ? "◆" : "○"}  ${s.name} · ${SEASONS[sp.season]}에 ${sp.place}에 가면 열려요`);
+    L.push(u ? `●  ${s.name} · ${sp.place} · ${day(u.at)}` : `${sp.season === now ? "◆" : "○"}  ${s.name} · ${SEASONS[sp.season]}에 ${sp.place}에 가면 수집할 수 있어요`);
   }
   modal("소리 도감", L.join("\n") + "\n\n" + (geoOk ? "위치는 이 페이지가 열려 있을 때만 확인해요." : "위치 권한이 없어서 소리가 열리지 않아요. 브라우저에서 위치를 허용해 주세요."));
 };
@@ -863,7 +863,7 @@ function check(lat, lon, force) {
     const s = SOUNDS.find((x) => x.id === g.sound), was = s.locked; s.locked = false;
     const cat = CATS.find((c) => SOUNDS.find((x) => x.unlock === c.id)?.id === g.sound);
     if (cat && !S.unlocked[cat.id]) S.unlocked[cat.id] = { place: g.name, at: Date.now() };
-    toast(was ? `${g.name}에서 '${s.name}' 소리가 열렸어요` : `◉ ${g.name} 도장을 찍었어요`); buzz([20, 60, 20]);
+    toast(was ? `${g.name}에서 '${s.name}' 소리를 수집했어요` : `◉ ${g.name} 도장을 찍었어요`); buzz([20, 60, 20]);
   }
   // 2) Hidden landmarks: a stamp each, opening the category sound if needed
   for (const [c, la, lo, name, rad] of places) {
@@ -872,7 +872,7 @@ function check(lat, lon, force) {
     if (dist(lat, lon, la / 1e5, lo / 1e5) > r) continue;
     S.stamps[name] = Date.now(); best["stamp:" + name] = 1;
     const s = SOUNDS.find((x) => x.unlock === c);
-    if (!S.unlocked[c]) { S.unlocked[c] = { place: name, at: Date.now() }; s.locked = false; toast(`숨은 명소 ${name}에서 '${s.name}' 소리가 열렸어요`); }
+    if (!S.unlocked[c]) { S.unlocked[c] = { place: name, at: Date.now() }; s.locked = false; toast(`숨은 명소 ${name}에서 '${s.name}' 소리를 수집했어요`); }
     else toast(`◉ 숨은 명소 ${name} 도장을 찍었어요`);
     buzz([20, 60, 20]);
   }
@@ -886,10 +886,10 @@ function check(lat, lon, force) {
     const s = SOUNDS.find((x) => x.spot === sp.id);
     if (sp.season === now) {
       S.spots[sp.id] = { place: sp.place, at: Date.now() }; s.locked = false; changed = true;
-      toast(`${sp.place}에서 '${s.name}' 소리가 열렸어요`); buzz([20, 60, 20]);
+      toast(`${sp.place}에서 '${s.name}' 소리를 수집했어요`); buzz([20, 60, 20]);
     } else if (S.spotNote[sp.id] !== today) {
       S.spotNote[sp.id] = today; save();
-      toast(`${sp.place}${topic(sp.place)} ${SEASONS[sp.season]}에 다시 오면 '${s.name}' 소리가 열려요`);
+      toast(`${sp.place}${topic(sp.place)} ${SEASONS[sp.season]}에 다시 오면 '${s.name}' 소리를 수집할 수 있어요`);
     }
   }
   if (msgs.length) window.toast(msgs.join("\n"));
@@ -927,7 +927,7 @@ function nearPlaces(me) {
   }).filter((p) => p.d <= RANGE).sort((a, b) => a.d - b.d).slice(0, 12);
 }
 function drawPlaces() {
-  $("placesFilter").textContent = showAll ? "전부 보기" : "안 열린 것만";
+  $("placesFilter").textContent = showAll ? "전부 보기" : "아직 못 모은 것만";
   const me = here || FALLBACK, r = rc.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   rc.width = r.width * dpr; rc.height = r.height * dpr; rg.setTransform(dpr, 0, 0, dpr, 0, 0);
   const cx = r.width / 2, cy = r.height / 2, rad = Math.min(r.width, r.height) / 2 - 30;
@@ -950,7 +950,7 @@ function drawPlaces() {
   if (!here) { rg.fillStyle = "rgba(255,255,255,.6)"; rg.fillText("위치를 못 받아서 서울시청 기준이에요", cx, cy + rad * 0.55); }
   if ($("placeInfo").dataset.tapped !== "1") {
     const ns = nearestSpot(me), now = SEASONS[seasonOf(new Date().getMonth() + 1)];
-    $("placeInfo").textContent = "점을 누르면 어떤 소리가 열리는지 보여 줘요.\n" + (ns
+    $("placeInfo").textContent = "점을 누르면 어떤 소리를 수집할 수 있는지 보여 줘요.\n" + (ns
       ? `이번 ${now} 명소: ${ns.sp.place} · ${["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(ns.b / 45) % 8]}쪽 ${Math.round(ns.d / 1000)}km (${SOUNDS.find((x) => x.spot === ns.sp.id).name})`
       : `이번 ${now} 명소는 모두 열었어요`);
   }
@@ -963,7 +963,7 @@ function info(p) {
   const dd = p.d >= 1000 ? (p.d / 1000).toFixed(1) + "km" : Math.round(p.d) + "m";
   const dir = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(p.b / 45) % 8];
   $("placeInfo").dataset.tapped = "1";
-  $("placeInfo").textContent = `${p.name} · ${dir}쪽 ${dd}\n` + (S.regions[g.id] ? `이미 열린 소리: ${s.name}` : `가면 열리는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
+  $("placeInfo").textContent = `${p.name} · ${dir}쪽 ${dd}\n` + (S.regions[g.id] ? `이미 수집한 소리: ${s.name}` : `가면 수집할 수 있는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
 }
 rc.addEventListener("pointerup", (e) => {
   const r = rc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
@@ -1011,7 +1011,7 @@ async function openMap() {
         const sp = SPOTS.find((x) => x.id === f.properties.cat.slice(5)), s = SOUNDS.find((x) => x.spot === sp.id);
         const d = dist(m.lat, m.lon, la, lo), dir = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(bearing(m.lat, m.lon, la, lo) / 45) % 8];
         $("placeInfo").dataset.tapped = "1";
-        $("placeInfo").textContent = `${sp.place} · ${dir}쪽 ${Math.round(d / 1000)}km\n${S.spots[sp.id] ? "이미 열린 소리" : SEASONS[sp.season] + "에 가면 열리는 소리"}: ${s.name}`;
+        $("placeInfo").textContent = `${sp.place} · ${dir}쪽 ${Math.round(d / 1000)}km\n${S.spots[sp.id] ? "이미 수집한 소리" : SEASONS[sp.season] + "에 가면 수집할 수 있는 소리"}: ${s.name}`;
         return;
       }
       info({ c: f.properties.cat, name: f.properties.n, d: dist(m.lat, m.lon, la, lo), b: bearing(m.lat, m.lon, la, lo) });

@@ -86,7 +86,7 @@ final class VoiceCommands {
             return new Command(Type.SEASON, null, null, 0);
 
         // Where to unlock sounds
-        if ((n.contains("근처") || n.contains("주변") || n.contains("어디")) && (n.contains("열") || n.contains("해금") || n.contains("소리"))
+        if ((n.contains("근처") || n.contains("주변") || n.contains("어디")) && (n.contains("열") || n.contains("해금") || n.contains("수집") || n.contains("모을") || n.contains("소리"))
                 && !n.contains("켜") && !n.contains("꺼"))
             return new Command(Type.NEARBY, null, null, 0);
 

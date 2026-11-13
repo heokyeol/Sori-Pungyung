@@ -29,7 +29,7 @@ final class Seasons {
             this.id = id; this.place = place; this.sound = sound; this.season = season; this.radiusM = radiusM; this.points = points;
         }
         String seasonName() { return SEASON_NAMES[season]; }
-        String hint() { return SEASON_NAMES[season] + "에 " + place + "에 가면 열려요"; }
+        String hint() { return SEASON_NAMES[season] + "에 " + place + "에 가면 수집할 수 있어요"; }
     }
 
     static final Spot[] ALL = {

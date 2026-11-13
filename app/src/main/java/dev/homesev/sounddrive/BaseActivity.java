@@ -106,7 +106,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     /** New sound unlocked: rebuild so it appears; builds decide how loudly to announce it. */
     @Override public void onUnlocked(String soundName, String placeName) {
         buildUi();
-        announceUnlock(placeName + " 근처에서 '" + soundName + "' 소리가 열렸어요");
+        announceUnlock(placeName + " 근처에서 '" + soundName + "' 소리를 수집했어요");
     }
 
     /** The car build blocks the map while driving. */
@@ -158,17 +158,21 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         head.setPadding(px(28 * k), px(22 * k), px(28 * k), 0);
         LinearLayout brand = new LinearLayout(this);
         brand.setGravity(Gravity.CENTER_VERTICAL);
-        TextView pleos = label("Pleos", 22, Widgets.INK);
-        pleos.setSingleLine(true);
-        pleos.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        brand.addView(pleos);
+        android.widget.ImageView pleos = new android.widget.ImageView(this); // official Pleos wordmark
+        pleos.setImageResource(R.drawable.pleos_logo);
+        pleos.setContentDescription("Pleos");
+        pleos.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        brand.addView(pleos, new LinearLayout.LayoutParams(px(63 * k), px(18 * k)));
         View bar = new View(this);
         bar.setBackgroundColor(0x55FFFFFF);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(px(1 * k), px(16 * k));
         blp.setMargins(px(12 * k), 0, px(12 * k), 0);
         brand.addView(bar, blp);
-        TextView appName = label("사운드드라이브", 16, Widgets.INK);
+        TextView appName = label("소리풍경.", 25, Widgets.INK); // app name in its own face (Diphylleia, OFL, subset)
         appName.setSingleLine(true);
+        appName.setIncludeFontPadding(false);
+        try { appName.setTypeface(android.graphics.Typeface.createFromAsset(getAssets(), "fonts/soripungyung.ttf")); }
+        catch (RuntimeException e) { /* falls back to the system face */ }
         brand.addView(appName);
         head.addView(brand);
         TextView hint = label("소리를 끌어서\n들리는 방향과 거리를 바꿔 보세요", 13, Widgets.MUTED);
@@ -333,7 +337,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         moreSheet.setPadding(px(20 * k), px(8 * k), px(20 * k), px(20 * k));
         addExtras(moreSheet);
         addDarkButtons(moreSheet);
-        Button places = bigButton("주변 해금 장소 (레이더 · 지도)", Widgets.PANEL);
+        Button places = bigButton("주변 수집 장소 (레이더 · 지도)", Widgets.PANEL);
         places.setOnClickListener(v -> {
             if (!canOpenPlaces()) { android.widget.Toast.makeText(this, "정차 중에만 볼 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); return; }
             startActivity(new android.content.Intent(this, PlacesActivity.class));
@@ -518,7 +522,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         b.append("\n── 숨은 명소 도장 (").append(player.stamps().size()).append("/").append(player.unlocks.size()).append(") ──\n\n");
         if (player.stamps().isEmpty()) b.append("아직 찾은 숨은 명소가 없어요.\n");
         else for (String st : new java.util.TreeSet<>(player.stamps())) b.append("◉  ").append(st).append("\n");
-        b.append("공항, 기차, 도서관, 야구장처럼 이름난 곳 " + player.unlocks.size() + "곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 열려요.\n");
+        b.append("공항, 기차, 도서관, 야구장처럼 이름난 곳 " + player.unlocks.size() + "곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 수집할 수 있어요.\n");
         int nowSeason = Seasons.season(java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1);
         b.append("\n── 계절 명소 (지금은 ").append(Seasons.SEASON_NAMES[nowSeason]).append(") ──\n\n");
         for (int season = 0; season < 4; season++) {

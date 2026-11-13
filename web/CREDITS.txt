@@ -1,4 +1,4 @@
-사운드드라이브 소리 출처 / Sound credits
+소리풍경 소리 출처 / Sound credits
 
 [rain] "Soft rain on a tile roof" — richwise — CC0 1.0
   https://freesound.org/people/richwise/sounds/466241/
@@ -182,3 +182,8 @@ CC BY-SA recordings: the edited versions in this app are shared under the same l
 
 장소 데이터 / Place data: © OpenStreetMap contributors, ODbL 1.0 — https://www.openstreetmap.org/copyright
   Extracted once (airports, libraries, temples, stations, valleys/national parks, beaches/harbours, cafes, baseball stadiums) into assets/places.tsv.
+
+
+글꼴 / Font
+- 앱 이름 '소리풍경.' 글자: Diphylleia (Copyright 2022 The Diphylleia Project Authors, SIL Open Font License 1.1, 쓰는 글자만 잘라 넣음) — fonts/OFL-Diphylleia.txt
+- Pleos 로고: Pleos 공식 사이트(pleos.ai)의 로고 파일

@@ -17,8 +17,8 @@ CLAUDE.md                    팀 공용 에이전트 규칙
   workflows/android-ci.yml   PR마다 자동 빌드·테스트
 scripts/setup-github.sh      라벨 + main 보호 규칙 설정 (1회)
 docs/                        가이드, 메모
-app/                         사운드드라이브 안드로이드 앱 (src/pleos = 차량판, src/galaxy = 휴대폰판, src/main = 공통)
-web/                         사운드드라이브 웹판 (https://sounds.homesev.duckdns.org)
+app/                         소리풍경 안드로이드 앱 (src/pleos = 차량판, src/galaxy = 휴대폰판, src/main = 공통)
+web/                         소리풍경 웹판 (https://sounds.homesev.duckdns.org)
 tools/                       소리·지역 자료 만드는 스크립트
 tests/                       PC에서 돌리는 시험
 ```
@@ -31,7 +31,7 @@ tests/                       PC에서 돌리는 시험
 
 ---
 
-## 사운드드라이브 (SoundDrive)
+## 소리풍경. (Sori-Pungyung, 옛 이름 사운드드라이브)
 
 차 안·차박용 입체 배경 소리 앱. 차를 가운데 두고 소리를 원하는 방향에 끌어다 놓는다. 현대 Pleos(Android Automotive) 공모전용.
 
@@ -43,17 +43,17 @@ tests/                       PC에서 돌리는 시험
 ### 기능
 - 기본 소리 10개 + 지역 20 + 숨은 명소 + 계절 12 (빗소리·파도·바람·모닥불·새 12종 숲·앰비언트·천둥번개·우주배경복사·토성·목성), 모두 실제 녹음(CC0 위주, 출처는 앱의 "소리 출처" / `app/src/main/assets/CREDITS.txt`)
 - 입체 배치, 행성 궤도·360° 회전, 수면 타이머(마지막 10분 페이드), 백그라운드 재생, 화면 어둡게
-- **지역 소리(기본 해금)**: 시·군·섬 20곳, 그 지역에 들어가면 대표 소리가 열림 — 예) 영종도 → 비행기 기내, 철원 → 두루미, 여수 → 밤바다, 제주도 → 제주 바람 (`Regions.java`)
+- **지역 소리(기본 수집)**: 시·군·섬 20곳, 그 지역에 들어가면 대표 소리를 수집 — 예) 영종도 → 비행기 기내, 철원 → 두루미, 여수 → 밤바다, 제주도 → 제주 바람 (`Regions.java`)
 - **숨은 명소 도장**: 지도에 안 보이는 이름난 곳 25곳(김포공항, 철도박물관, 별마당도서관, 프로야구 홈구장 등). 가면 도장, 도서관·야구장 소리는 여기서만 열림 (`assets/places.tsv`)
 - **계절 명소(이벤트)**: 지역+계절 12곳 — 예) 여름 양양 → 서핑, 겨울 대관령 → 눈보라, 가을 마이산 → 낙엽 (`Seasons.java`)
-- 소리 도감, 주변 해금 장소 레이더·지도(MapLibre + OpenFreeMap, 키 없음)
+- 소리 도감, 주변 수집 장소 레이더·지도(MapLibre + OpenFreeMap, 키 없음)
 - 앱 안에 지도/장소 API 없음: 좌표는 OpenStreetMap에서 한 번만 뽑아 넣음
 
 ### Pleos판 전용 (공개 Pleos SDK)
 | 기능 | SDK |
 |---|---|
 | 속도 볼륨 보정·주행 중 조작 잠금, 창문 열리면 소리 줄임, 무드등 공간 그라데이션 | Vehicle 2.3.2 |
-| 위치 해금 | FusedLocation 1.1.3 |
+| 위치 수집 | FusedLocation 1.1.3 |
 | 음성 명령·음성 안내("빗소리 켜 줘", "이번 계절 명소 어디야") | SpeechToText / TextToSpeech 3.3.1 (온디바이스) |
 | 순정 내비로 "여기로 안내" | NaviHelper 3.0.5 |
 
@@ -74,6 +74,6 @@ $J/java -cp build/smoke dev.homesev.sounddrive.UnlocksTest app/src/main/assets/p
 - `make_web_assets.py` 웹용 mp3·places.json 생성 (web/audio는 저장소에 넣지 않음)
 
 ### 남은 일
-- 기기 확인: 무드등·창문·음성 SDK·내비 안내·실제 위치 해금
+- 기기 확인: 무드등·창문·음성 SDK·내비 안내·실제 위치 수집
 - 디자인 개편(방향 결정 대기), 부르면 듣기(운전대 버튼 방식 추천, 결정 대기)
 - 대구 라이온즈파크·창원NC파크 좌표 미확인으로 빠짐

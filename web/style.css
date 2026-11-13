@@ -14,7 +14,9 @@ button:focus-visible, canvas:focus-visible { outline: 1px solid var(--ink); outl
 #stage { width: 100%; height: 100%; display: block; touch-action: none; }
 #brand { position: absolute; left: 28px; top: 22px; pointer-events: none; }
 .brandline { display: flex; align-items: center; gap: 12px; font-size: 16px; }
-.brandline b { font-size: 22px; letter-spacing: -.01em; }
+.brandline .logo { display: block; width: 63px; height: 18px; }
+@font-face { font-family: "SoriPungyung"; src: url("fonts/soripungyung.woff") format("woff"); font-display: block; }
+.brandline .appname { font-family: "SoriPungyung", serif; font-size: 26px; line-height: 1; letter-spacing: .01em; }
 .brandline i { width: 1px; height: 16px; background: rgba(255,255,255,.35); }
 #brand p { margin: 36px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 
@@ -25,7 +27,8 @@ button:focus-visible, canvas:focus-visible { outline: 1px solid var(--ink); outl
   #stageWrap { flex: none; height: 56dvh; display: flex; flex-direction: column; }
   #brand { position: static; padding: 12px 18px 0; order: -1; }
   #brand p { display: none; }
-  .brandline b { font-size: 18px; }
+  .brandline .logo { width: 52px; height: 15px; }
+  .brandline .appname { font-size: 22px; }
   .brandline { font-size: 14px; }
   #stage { flex: 1; min-height: 0; height: auto; }
   #title { font-size: 30px; }
