@@ -320,13 +320,18 @@ setInterval(() => {
 
 // ── Stage canvas: dots, drag, water-drop ripples ─────────────────────────
 const cv = $("stage"), g2 = cv.getContext("2d");
-let W = 0, H = 0, DPR = 1, CX = 0, CY = 0, R = 0, drawQueued = false;
+let W = 0, H = 0, DPR = 1, CX = 0, CY = 0, R = 0, U = 1, drawQueued = false;
 const ripples = [];
 function resize() {
   DPR = window.devicePixelRatio || 1;
   const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
   cv.width = W * DPR; cv.height = H * DPR; g2.setTransform(DPR, 0, 0, DPR, 0, 0);
-  CX = W / 2; CY = H / 2; R = Math.min(W, H) / 2 - 62;
+  // Everything on the stage scales with its size (U), so a phone's small stage isn't crowded.
+  const R0 = Math.min(W, H) / 2;
+  U = Math.max(0.42, Math.min(1.2, R0 / 380));
+  // Leave room for the "왼쪽 / 오른쪽" labels at the sides on narrow (phone) screens.
+  const sideLabel = 24 * U + 3.3 * Math.max(10, 15 * U) + 4;
+  CX = W / 2; CY = H / 2; R = Math.min(H / 2 - 62 * U, W / 2 - sideLabel);
   requestDraw();
 }
 window.addEventListener("resize", resize);
@@ -343,7 +348,7 @@ function draw(t) {
   drawQueued = false;
   const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 0.016; lastFrame = t;
   let busy = S.motion > 0 || playing;
-  if (playing) wavePhase = (wavePhase + dt * 9) % 16;
+  if (playing) wavePhase = (wavePhase + dt * 9 * U) % (16 * U);
   g2.fillStyle = "#0b0b0b"; g2.fillRect(0, 0, W, H);
   const glow = g2.createRadialGradient(CX, CY, 0, CX, CY, R * 0.9);
   glow.addColorStop(0, "rgba(255,255,255,.13)"); glow.addColorStop(1, "rgba(255,255,255,0)");
@@ -353,7 +358,7 @@ function draw(t) {
   for (const s of SOUNDS) {
     if (s.locked || s.anim.shown < 0.02) continue;
     const px = CX + s.x * R, py = CY + s.y * R, maxR = R * 1.25;
-    for (let rr = 22 + wavePhase; rr < maxR; rr += 16) {
+    for (let rr = 22 * U + wavePhase; rr < maxR; rr += 16 * U) {
       const a = 1 - rr / maxR;
       g2.globalAlpha = 0.26 * a * a * s.anim.shown * (0.5 + 0.5 * s.volume);
       g2.beginPath(); g2.arc(px, py, rr, 0, 7); g2.stroke();
@@ -363,13 +368,13 @@ function draw(t) {
   g2.globalAlpha = 0.43; g2.lineWidth = 1.1; g2.beginPath(); g2.arc(CX, CY, R, 0, 7); g2.stroke();
   for (let d = 0; d < 360; d += 5) {
     const a = ((d - 90) * Math.PI) / 180, card = d % 90 === 0, mid = d % 15 === 0;
-    const i0 = R - (card ? 0 : mid ? 9 : 5), o0 = R + (card ? 18 : 0);
+    const i0 = R - (card ? 0 : mid ? 9 * U : 5 * U), o0 = R + (card ? 18 * U : 0);
     g2.globalAlpha = card ? 0.8 : mid ? 0.47 : 0.24;
     g2.beginPath(); g2.moveTo(CX + Math.cos(a) * i0, CY + Math.sin(a) * i0); g2.lineTo(CX + Math.cos(a) * o0, CY + Math.sin(a) * o0); g2.stroke();
   }
-  g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = "15px sans-serif"; g2.textAlign = "center";
-  g2.fillText("앞", CX, CY - R - 28); g2.fillText("뒤", CX, CY + R + 40);
-  g2.textAlign = "right"; g2.fillText("왼쪽", CX - R - 26, CY + 5); g2.textAlign = "left"; g2.fillText("오른쪽", CX + R + 26, CY + 5); g2.textAlign = "center";
+  g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = `${Math.max(10, 15 * U)}px sans-serif`; g2.textAlign = "center";
+  g2.fillText("앞", CX, CY - R - 28 * U); g2.fillText("뒤", CX, CY + R + 40 * U);
+  g2.textAlign = "right"; g2.fillText("왼쪽", CX - R - 24 * U, CY + 5 * U); g2.textAlign = "left"; g2.fillText("오른쪽", CX + R + 24 * U, CY + 5 * U); g2.textAlign = "center";
   // touch ripples
   for (let i = ripples.length - 1; i >= 0; i--) {
     const rp = ripples[i], k = (t - rp.t0) / 900;
@@ -379,7 +384,7 @@ function draw(t) {
       const kj = k - j * 0.16; if (kj <= 0) continue;
       const e = 1 - (1 - kj) * (1 - kj);
       g2.globalAlpha = 0.66 * rp.s * (1 - kj) * (1 - kj); g2.lineWidth = (1.8 - j * 0.4);
-      g2.beginPath(); g2.arc(rp.x, rp.y, 10 + e * 70 * rp.s, 0, 7); g2.stroke();
+      g2.beginPath(); g2.arc(rp.x, rp.y, (10 + e * 70 * rp.s) * U, 0, 7); g2.stroke();
     }
   }
   // dotted guides
@@ -394,7 +399,7 @@ function draw(t) {
   g2.globalAlpha = 0.9; g2.lineWidth = 1.6;
   g2.beginPath(); g2.roundRect(CX - cw / 2, CY - ch / 2, cw, ch, cw / 2); g2.stroke();
   g2.beginPath(); g2.ellipse(CX, CY + ch * 0.21, cw * 0.32, ch * 0.09, 0, 0.35, Math.PI - 0.35); g2.stroke();
-  g2.globalAlpha = 1; g2.fillStyle = INK; g2.beginPath(); g2.arc(CX, CY, 2.6, 0, 7); g2.fill();
+  g2.globalAlpha = 1; g2.fillStyle = INK; g2.beginPath(); g2.arc(CX, CY, 2.6 * Math.max(0.7, U), 0, 7); g2.fill();
   // sounds
   for (const s of SOUNDS) {
     if (s.locked) continue;
@@ -403,17 +408,19 @@ function draw(t) {
     if (a.pop > 0.001) { a.pop *= Math.exp(-dt * 6); busy = true; } else a.pop = 0;
     const pop = 1 + 0.3 * a.pop * Math.cos(a.pop * 9), px = CX + s.x * R, py = CY + s.y * R;
     if (a.shown < 0.5) {
-      g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, 6, 0, 7); g2.fill();
-      g2.globalAlpha = 0.6; g2.lineWidth = 1.2; g2.beginPath(); g2.arc(px, py, 6 * pop, 0, 7); g2.stroke();
-      g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = "13px sans-serif"; g2.fillText(s.name, px, py + 24);
+      const d6 = Math.max(3.5, 6 * U);
+      g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, d6, 0, 7); g2.fill();
+      g2.globalAlpha = 0.6; g2.lineWidth = 1.2; g2.beginPath(); g2.arc(px, py, d6 * pop, 0, 7); g2.stroke();
+      g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = `${Math.max(9, 13 * U)}px sans-serif`; g2.fillText(s.name, px, py + d6 + 14 * Math.max(0.7, U));
     } else {
-      const r = (28 + 20 * s.volume) * pop * (drag && drag.s === s ? 1.12 : 1);
+      const r = (28 + 20 * s.volume) * U * pop * (drag && drag.s === s ? 1.12 : 1);
       g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.fill();
       g2.globalAlpha = 0.94; g2.lineWidth = 1.5; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.stroke();
-      if (s === selected) { g2.globalAlpha = 0.6; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7, 0, 7); g2.stroke(); }
+      if (s === selected) { g2.globalAlpha = 0.6; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
       drawIcon(g2, s.id, px, py, r * 0.86, 0.92);
-      g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = "bold 17px sans-serif"; g2.fillText(s.name, px, py + r + 24);
-      g2.fillStyle = MUTED; g2.font = "12px ui-monospace, Menlo, monospace"; g2.fillText(`${sideText(s.x, s.y)}  /  ${Math.round(s.volume * 100)}`, px, py + r + 44);
+      const f1 = Math.max(11, 17 * U), f2 = Math.max(9, 12 * U);
+      g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`; g2.fillText(s.name, px, py + r + f1 * 1.35);
+      g2.fillStyle = MUTED; g2.font = `${f2}px ui-monospace, Menlo, monospace`; g2.fillText(`${sideText(s.x, s.y)}  /  ${Math.round(s.volume * 100)}`, px, py + r + f1 * 1.35 + f2 * 1.6);
     }
   }
   g2.globalAlpha = 1;
@@ -480,7 +487,7 @@ function drawIcon(c, id, cx, cy, r, alpha) {
 function drop(x, y, color, s) { ripples.push({ x, y, s, t0: performance.now() }); if (ripples.length > 8) ripples.shift(); requestDraw(); }
 function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 function nearest(x, y) {
-  let best = null, bd = 40;
+  let best = null, bd = Math.max(28, 52 * U); // finger-sized even when the stage is small
   for (const s of SOUNDS) { if (s.locked) continue; const d = Math.hypot(CX + s.x * R - x, CY + s.y * R - y); if (d < bd) { bd = d; best = s; } }
   return best;
 }

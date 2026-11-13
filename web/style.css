@@ -21,7 +21,15 @@ button:focus-visible, canvas:focus-visible { outline: 1px solid var(--ink); outl
 #panel { flex: 1; min-width: 380px; max-width: 640px; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--hair); padding: 18px 36px 28px; }
 @media (orientation: portrait) {
   #app { flex-direction: column; }
-  #stageWrap { flex: none; height: 54dvh; }
+  /* Phone: the brand gets its own row above the stage (no overlap), the hint is dropped. */
+  #stageWrap { flex: none; height: 56dvh; display: flex; flex-direction: column; }
+  #brand { position: static; padding: 12px 18px 0; order: -1; }
+  #brand p { display: none; }
+  .brandline b { font-size: 18px; }
+  .brandline { font-size: 14px; }
+  #stage { flex: 1; min-height: 0; height: auto; }
+  #title { font-size: 30px; }
+  .round { width: 68px; height: 68px; }
   #panel { flex: 1; max-width: none; min-width: 0; border-left: 0; border-top: 1px solid var(--hair); padding: 14px 20px 28px; }
 }
 .top { display: flex; justify-content: flex-end; align-items: center; gap: 18px; }
