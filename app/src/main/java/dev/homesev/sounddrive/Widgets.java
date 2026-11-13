@@ -112,6 +112,61 @@ final class Widgets {
             t.setTextAlign(Paint.Align.CENTER);
         }
 
+        // Drag a tile sideways (or long-press) to carry it onto the stage; a plain tap still toggles.
+        private float downX, downY;
+        private boolean carried;
+
+        /** Start a system drag carrying this sound; the stage turns it on where it's dropped. */
+        boolean startCarry() {
+            if (carried) return true;
+            carried = true;
+            getParent().requestDisallowInterceptTouchEvent(true);
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            return startDragAndDrop(null, new IconShadow(this), s, 0);
+        }
+
+        /** Drag shadow: just the round line-art icon (the stage draws its own landing ring). */
+        private static final class IconShadow extends DragShadowBuilder {
+            private final SoundTile t;
+            private final int size;
+            IconShadow(SoundTile t) { super(t); this.t = t; size = Math.round(Math.min(t.getWidth() * 0.3f, 40 * t.dp) * 2 + 6 * t.dp); }
+            @Override public void onProvideShadowMetrics(android.graphics.Point sz, android.graphics.Point touch) {
+                sz.set(size, size); touch.set(size / 2, size / 2);
+            }
+            @Override public void onDrawShadow(Canvas c) {
+                float r = size / 2f - 3 * t.dp;
+                Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+                p.setColor(BG); c.drawCircle(size / 2f, size / 2f, r, p);
+                p.setColor(INK); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.6f * t.dp);
+                c.drawCircle(size / 2f, size / 2f, r, p);
+                LineArt.draw(c, t.s.id, size / 2f, size / 2f, r, 235, t.dp);
+            }
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downX = e.getX(); downY = e.getY(); carried = false;
+                    break;
+                case MotionEvent.ACTION_MOVE: {
+                    float dx = e.getX() - downX, dy = e.getY() - downY;
+                    int slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
+                    if (!carried && Math.hypot(dx, dy) > slop && Math.abs(dx) > Math.abs(dy) * 0.8f) {
+                        startCarry();
+                        cancelLongPress();
+                        setPressed(false);
+                        return true;
+                    }
+                    break;
+                }
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (carried) { carried = false; cancelLongPress(); setPressed(false); return true; }
+                    break;
+            }
+            return super.onTouchEvent(e);
+        }
+
         @Override protected void onMeasure(int w, int h) {
             int width = MeasureSpec.getSize(w);
             float r = Math.min(width * 0.3f, 40 * dp); // same as onDraw

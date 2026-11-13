@@ -51,7 +51,7 @@ button:focus-visible, canvas:focus-visible { outline: 1px solid var(--ink); outl
 .tabs button.active { color: var(--ink); border-bottom-color: var(--ink); }
 #rows { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px 4px; padding: 14px 0 18px; border-bottom: 1px solid var(--hair); }
 @media (orientation: portrait) { #rows { grid-template-columns: repeat(4, 1fr); } }
-.tile { display: flex; flex-direction: column; align-items: center; padding: 6px 0; position: relative; overflow: hidden; }
+.tile { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; display: flex; flex-direction: column; align-items: center; padding: 6px 0; position: relative; overflow: hidden; }
 .tile canvas { width: 100%; max-width: 104px; aspect-ratio: 1; }
 .tile b { font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .tile.on b { color: var(--ink); font-weight: 700; }
@@ -93,3 +93,5 @@ button:focus-visible, canvas:focus-visible { outline: 1px solid var(--ink); outl
 #radar, #map { position: absolute; inset: 0; width: 100%; height: 100%; }
 #radar { touch-action: none; }
 #placeInfo { margin: 0; padding: 12px 16px 18px; color: #cfcfcf; font-size: 15px; white-space: pre-line; }
+.tileGhost { position: fixed; left: 0; top: 0; width: 56px; height: 56px; border-radius: 50%; background: var(--panel); pointer-events: none; z-index: 50; opacity: .92; }
+body.tdragging, body.tdragging * { cursor: grabbing !important; user-select: none; }

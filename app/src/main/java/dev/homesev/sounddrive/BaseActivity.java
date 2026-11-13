@@ -267,7 +267,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             Widgets.SoundTile tile = new Widgets.SoundTile(this, s, k);
             tile.selected = s == selected;
             tile.setOnClickListener(v -> { setSound(s, !s.enabled); select(s); });
-            tile.setOnLongClickListener(v -> { select(s); return true; });
+            tile.setOnLongClickListener(v -> { select(s); return tile.startCarry(); });
             android.widget.GridLayout.LayoutParams gp = new android.widget.GridLayout.LayoutParams(
                     android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED),
                     android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f));
@@ -646,6 +646,11 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     }
 
     @Override public void onStageChanged() { player.save(); refresh(); }
+
+    @Override public void onSoundDropped(SoundSource s, boolean on) {
+        setSound(s, on);
+        select(s);
+    }
 
     // ── Small view helpers ─────────────────────────────────────────────────
     protected int px(float v) { return Math.round(v * dp); }

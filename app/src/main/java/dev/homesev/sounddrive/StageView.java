@@ -9,6 +9,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.SystemClock;
+import android.view.DragEvent;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
@@ -31,6 +32,8 @@ final class StageView extends View {
         void onStageChanged();
         default void onSelected(SoundSource s) {}
         default void onBirdEdit(boolean on) {}
+        /** A sound was dropped onto the stage from the panel (on) or dragged far off the ring (off). */
+        default void onSoundDropped(SoundSource s, boolean on) {}
     }
 
     // Bird perches: each species sings from its own spot around the "새" dot.
@@ -74,6 +77,13 @@ final class StageView extends View {
     private SoundSource dragging, selected;
     private float downX, downY, lastTickX, lastTickY;
     private boolean moved, locked, animateAlways, playing;
+    // Dragging a dot well past the ring turns it off (it snaps back to where the drag began).
+    private static final float OFF_DIST = 1.15f;
+    private boolean dragOut;
+    private float startX, startY;
+    // Drop preview while a tile from the panel is dragged over the stage.
+    private SoundSource dropHint;
+    private float dropX, dropY;
 
     private static final long RIPPLE_MS = 900;
     private static final class Ripple { float x, y; long start; float strength; }
@@ -99,6 +109,45 @@ final class StageView extends View {
         mono.setColor(Widgets.MUTED);
         setHapticFeedbackEnabled(true);
         for (SoundSource s : sources) if (s instanceof Birds) birds = (Birds) s;
+        setOnDragListener(this::onTileDrag);
+    }
+
+    /** A sound tile dragged out of the panel: preview on the ring, drop = turn it on right there. */
+    private boolean onTileDrag(View v, DragEvent e) {
+        if (!(e.getLocalState() instanceof SoundSource)) return false;
+        SoundSource s = (SoundSource) e.getLocalState();
+        switch (e.getAction()) {
+            case DragEvent.ACTION_DRAG_STARTED: return true;
+            case DragEvent.ACTION_DRAG_LOCATION: {
+                float[] n = clampNorm(e.getX(), e.getY());
+                dropHint = s; dropX = n[0]; dropY = n[1];
+                invalidate();
+                return true;
+            }
+            case DragEvent.ACTION_DRAG_EXITED:
+            case DragEvent.ACTION_DRAG_ENDED:
+                dropHint = null;
+                invalidate();
+                return true;
+            case DragEvent.ACTION_DROP: {
+                dropHint = null;
+                if (!locked) { float[] n = clampNorm(e.getX(), e.getY()); s.x = n[0]; s.y = n[1]; }
+                selected = s;
+                drop(cx + s.x * radius, cy + s.y * radius, 1.3f);
+                performHapticFeedback(android.os.Build.VERSION.SDK_INT >= 30
+                        ? HapticFeedbackConstants.CONFIRM : HapticFeedbackConstants.VIRTUAL_KEY);
+                listener.onSoundDropped(s, true);
+                return true;
+            }
+        }
+        return true;
+    }
+
+    private float[] clampNorm(float x, float y) {
+        float nx = (x - cx) / radius, ny = (y - cy) / radius;
+        float d = (float) Math.hypot(nx, ny);
+        if (d > 1) { nx /= d; ny /= d; }
+        return new float[] {nx, ny};
     }
 
     void setLocked(boolean locked) { this.locked = locked; invalidate(); }
@@ -236,6 +285,18 @@ final class StageView extends View {
                 c.drawText(s.name, px, py + 24 * dp * k, text);
             } else {
                 float r = (28 + 20 * s.volume) * dp * k * pop * (s == dragging ? 1.12f : 1f);
+                if (s == dragging && dragOut) { // "놓으면 꺼짐": faint dashed ring only
+                    line.setStrokeWidth(1.2f * dp);
+                    line.setAlpha(120);
+                    line.setPathEffect(new android.graphics.DashPathEffect(new float[] {5 * dp, 5 * dp}, 0));
+                    c.drawCircle(px, py, r, line);
+                    line.setPathEffect(null);
+                    text.setTypeface(Typeface.DEFAULT_BOLD);
+                    text.setTextSize(16 * dp * k);
+                    text.setColor(Widgets.INK);
+                    c.drawText("놓으면 꺼짐", px, py + r + 24 * dp * k, text);
+                    continue;
+                }
                 fill.setColor(Widgets.BG);
                 c.drawCircle(px, py, r, fill);
                 line.setStrokeWidth(1.5f * dp);
@@ -291,6 +352,18 @@ final class StageView extends View {
                 c.drawText("새 자리 편집 · 끌어서 옮기고, 눌러서 켜고 끄기 · 빈 곳을 누르면 끝", cx, getHeight() - 16 * dp * k, text);
             }
         }
+        if (dropHint != null) { // where the dragged tile will land
+            float px = cx + dropX * radius, py = cy + dropY * radius, r = (28 + 20 * dropHint.volume) * dp * k + 14 * dp * k;
+            line.setStrokeWidth(1.4f * dp);
+            line.setAlpha(220);
+            line.setPathEffect(new android.graphics.DashPathEffect(new float[] {6 * dp, 5 * dp}, 0));
+            c.drawCircle(px, py, r, line);
+            line.setPathEffect(null);
+            text.setTypeface(Typeface.DEFAULT_BOLD);
+            text.setTextSize(16 * dp * k);
+            text.setColor(Widgets.INK);
+            c.drawText(locked ? dropHint.name + " 켜기" : dropHint.name + " · 여기에 놓기", px, py + r + 24 * dp * k, text);
+        }
         if (locked) {
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(15 * dp * k);
@@ -322,7 +395,8 @@ final class StageView extends View {
                 longPressed = false;
                 dragging = nearest(x, y);
                 if (dragging instanceof Birds) postDelayed(longPress, 550);
-                downX = lastTickX = x; downY = lastTickY = y; moved = false;
+                downX = lastTickX = x; downY = lastTickY = y; moved = false; dragOut = false;
+                if (dragging != null) { startX = dragging.x; startY = dragging.y; }
                 drop(x, y, dragging != null ? 1f : 0.6f);
                 performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 invalidate();
@@ -346,6 +420,8 @@ final class StageView extends View {
                 if (moved && !locked) {
                     float nx = (x - cx) / radius, ny = (y - cy) / radius;
                     float d = (float) Math.hypot(nx, ny);
+                    boolean out = dragging.enabled && d > OFF_DIST;
+                    if (out != dragOut) { dragOut = out; performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); }
                     if (d > 1) { nx /= d; ny /= d; }
                     dragging.x = nx; dragging.y = ny;
                     if (Math.hypot(x - lastTickX, y - lastTickY) > 40 * dp) {
@@ -380,6 +456,15 @@ final class StageView extends View {
                         drop(cx + dragging.x * radius, cy + dragging.y * radius, 1.3f);
                         performHapticFeedback(android.os.Build.VERSION.SDK_INT >= 30
                                 ? HapticFeedbackConstants.CONFIRM : HapticFeedbackConstants.VIRTUAL_KEY);
+                    } else if (dragOut) { // pulled off the stage: switch off, put it back where it was
+                        dragging.x = startX; dragging.y = startY;
+                        dragOut = false;
+                        selected = dragging;
+                        SoundSource off = dragging;
+                        dragging = null;
+                        listener.onSoundDropped(off, false);
+                        invalidate();
+                        return true;
                     } else {
                         drop(x, y, 0.8f);
                     }
@@ -392,7 +477,9 @@ final class StageView extends View {
                 }
                 return true;
             case MotionEvent.ACTION_CANCEL:
-                dragging = null;
+                if (dragging != null && dragOut) { dragging.x = startX; dragging.y = startY; }
+                dragging = null; dragOut = false;
+                invalidate();
                 return true;
         }
         return false;
