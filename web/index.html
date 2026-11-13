@@ -3,42 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b0f17">
+<meta name="theme-color" content="#0b0b0b">
 <title>사운드드라이브</title>
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%230b0f17%22/%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2222%22 fill=%22none%22 stroke=%22%235AA9E6%22 stroke-width=%223%22/%3E%3Ccircle cx=%2232%22 cy=%2212%22 r=%226%22 fill=%22%23B48CF2%22/%3E%3Ccircle cx=%2246%22 cy=%2242%22 r=%225%22 fill=%22%239BD45A%22/%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%225%22 fill=%22%23e8ecf2%22/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%230b0b0b%22/%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2222%22 fill=%22none%22 stroke=%22%23ededed%22 stroke-width=%222%22/%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2214%22 fill=%22none%22 stroke=%22%23ededed%22 stroke-opacity=%22.5%22/%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%223%22 fill=%22%23ededed%22/%3E%3C/svg%3E">
 </head>
 <body>
 <div id="app">
   <section id="stageWrap">
     <canvas id="stage" aria-label="소리 배치 무대. 점을 끌어서 옮기고 눌러서 켜고 끕니다."></canvas>
+    <header id="brand">
+      <div class="brandline"><b>Pleos</b><i></i><span>사운드드라이브</span></div>
+      <p>소리를 끌어서<br>들리는 방향과 거리를 바꿔 보세요</p>
+    </header>
   </section>
   <section id="panel">
-    <h1>사운드드라이브</h1>
-    <p id="status">헤드폰을 쓰면 방향이 더 잘 들려요</p>
-    <button id="play" class="btn primary">재생</button>
-    <div class="row">
-      <button class="btn preset" data-preset="rain,wind,pad">빗속 드라이브</button>
-      <button class="btn preset" data-preset="waves,birds,wind">바닷가</button>
-      <button class="btn preset" data-preset="fire,birds,pad">캠핑</button>
+    <div class="top"><span id="clock" class="mono"></span><button id="more" class="iconbtn" aria-label="더보기"><i></i><i></i><i></i></button></div>
+    <div class="titlerow">
+      <div><h1 id="title">나만의 소리</h1><p id="status"></p></div>
+      <button id="play" class="round" aria-label="재생"></button>
     </div>
-    <button id="motion" class="btn">움직임: 멈춤</button>
-    <button id="sleep" class="btn">수면 타이머: 끔</button>
-    <button id="dark" class="btn">화면 어둡게</button>
-    <label class="label">전체 볼륨</label>
-    <input id="master" type="range" min="0" max="100" value="80">
+    <nav class="tabs">
+      <button class="preset" data-preset="rain,wind,pad">빗속 드라이브</button>
+      <button class="preset" data-preset="waves,birds,wind">바닷가</button>
+      <button class="preset" data-preset="fire,birds,pad">캠핑</button>
+    </nav>
     <div id="rows"></div>
-    <button id="species" class="btn">새 종류 고르기</button>
-    <button id="places" class="btn">🗺 주변 해금 장소 (레이더·지도)</button>
-    <button id="dex" class="btn">소리 도감</button>
-    <button id="reset" class="btn">위치 처음으로</button>
-    <button id="credits" class="btn subtle">소리 출처</button>
-    <p class="hint">소리를 끌어서 내 주변 원하는 곳에 놓으세요. 점을 누르면 켜고 꺼져요. 위치를 허용하면 공항·도서관·절 같은 곳에서 새 소리가 열려요.</p>
+    <div class="sel"><b id="selName"></b><span id="selInfo" class="mono"></span></div>
+    <canvas id="selSlider" class="ticks" aria-label="고른 소리 볼륨"></canvas>
+    <div class="line row"><span class="muted">새 종류</span><button id="species" class="link">고르기</button></div>
+    <div class="row"><span class="muted">전체 볼륨</span><span id="masterVal" class="mono"></span></div>
+    <canvas id="masterSlider" class="ticks" aria-label="전체 볼륨"></canvas>
+    <div class="cells">
+      <button id="motion" class="cell"><span class="muted">움직임</span><b>멈춤</b></button>
+      <button id="sleep" class="cell"><span class="muted">수면 타이머</span><b>끔</b></button>
+      <button id="dark" class="cell"><span class="muted">화면</span><b>어둡게</b></button>
+    </div>
   </section>
 </div>
 
 <div id="darkOverlay" hidden><span id="darkText">화면을 누르면 돌아와요</span></div>
 <div id="toast" hidden></div>
+
+<div id="moreSheet" hidden>
+  <div class="sheet">
+    <div class="sheetHead"><h2>더보기</h2><button id="moreClose" class="btn small">닫기</button></div>
+    <div class="menu">
+      <button id="places" class="btn">주변 해금 장소 (레이더 · 지도)</button>
+      <button id="dex" class="btn">소리 도감</button>
+      <button id="reset" class="btn">위치 처음으로</button>
+      <button id="credits" class="btn">소리 출처</button>
+    </div>
+  </div>
+</div>
 
 <div id="modal" hidden>
   <div class="sheet">
@@ -49,7 +66,7 @@
 
 <div id="placesView" hidden>
   <div class="bar">
-    <button id="placesClose" class="btn small">← 닫기</button>
+    <button id="placesClose" class="btn small">닫기</button>
     <button id="tabRadar" class="btn small active">레이더</button>
     <button id="tabMap" class="btn small">지도</button>
     <button id="placesFilter" class="btn small">안 열린 것만</button>

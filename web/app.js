@@ -326,24 +326,51 @@ function resize() {
   DPR = window.devicePixelRatio || 1;
   const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
   cv.width = W * DPR; cv.height = H * DPR; g2.setTransform(DPR, 0, 0, DPR, 0, 0);
-  CX = W / 2; CY = H / 2; R = Math.min(W, H) / 2 - 46;
+  CX = W / 2; CY = H / 2; R = Math.min(W, H) / 2 - 62;
   requestDraw();
 }
 window.addEventListener("resize", resize);
 function requestDraw() { if (!drawQueued) { drawQueued = true; requestAnimationFrame(draw); } }
 let lastFrame = 0;
+let wavePhase = 0, selected = null;
+const INK = "#ededed", MUTED = "#8a8a8a";
+function sideText(x, y) {
+  const deg = (Math.atan2(x, -y) * 180) / Math.PI, a = Math.round(Math.abs(deg));
+  if (a === 0 || a === 180) return (a === 0 ? "앞 " : "뒤 ") + a + "°";
+  return (deg > 0 ? "오른쪽 " : "왼쪽 ") + a + "°";
+}
 function draw(t) {
   drawQueued = false;
   const dt = lastFrame ? Math.min(0.05, (t - lastFrame) / 1000) : 0.016; lastFrame = t;
-  let busy = S.motion > 0;
-  const bg = g2.createRadialGradient(CX, CY, 0, CX, CY, Math.max(W, H) * 0.7);
-  bg.addColorStop(0, "#1b2333"); bg.addColorStop(1, "#0b0f17");
-  g2.fillStyle = bg; g2.fillRect(0, 0, W, H);
-  g2.strokeStyle = "rgba(255,255,255,.2)"; g2.lineWidth = 1.5;
-  for (const f of [0.33, 0.66, 1]) { g2.beginPath(); g2.arc(CX, CY, R * f, 0, 7); g2.stroke(); }
-  g2.fillStyle = "rgba(255,255,255,.55)"; g2.font = "14px sans-serif"; g2.textAlign = "center";
-  g2.fillText("앞", CX, CY - R - 10); g2.fillText("뒤", CX, CY + R + 22);
-  // ripples
+  let busy = S.motion > 0 || playing;
+  if (playing) wavePhase = (wavePhase + dt * 9) % 16;
+  g2.fillStyle = "#0b0b0b"; g2.fillRect(0, 0, W, H);
+  const glow = g2.createRadialGradient(CX, CY, 0, CX, CY, R * 0.9);
+  glow.addColorStop(0, "rgba(255,255,255,.13)"); glow.addColorStop(1, "rgba(255,255,255,0)");
+  g2.fillStyle = glow; g2.beginPath(); g2.arc(CX, CY, R * 0.9, 0, 7); g2.fill();
+  // ripple fields from every sound that is on
+  g2.lineWidth = 0.8; g2.strokeStyle = INK;
+  for (const s of SOUNDS) {
+    if (s.locked || s.anim.shown < 0.02) continue;
+    const px = CX + s.x * R, py = CY + s.y * R, maxR = R * 1.25;
+    for (let rr = 22 + wavePhase; rr < maxR; rr += 16) {
+      const a = 1 - rr / maxR;
+      g2.globalAlpha = 0.26 * a * a * s.anim.shown * (0.5 + 0.5 * s.volume);
+      g2.beginPath(); g2.arc(px, py, rr, 0, 7); g2.stroke();
+    }
+  }
+  // compass ring
+  g2.globalAlpha = 0.43; g2.lineWidth = 1.1; g2.beginPath(); g2.arc(CX, CY, R, 0, 7); g2.stroke();
+  for (let d = 0; d < 360; d += 5) {
+    const a = ((d - 90) * Math.PI) / 180, card = d % 90 === 0, mid = d % 15 === 0;
+    const i0 = R - (card ? 0 : mid ? 9 : 5), o0 = R + (card ? 18 : 0);
+    g2.globalAlpha = card ? 0.8 : mid ? 0.47 : 0.24;
+    g2.beginPath(); g2.moveTo(CX + Math.cos(a) * i0, CY + Math.sin(a) * i0); g2.lineTo(CX + Math.cos(a) * o0, CY + Math.sin(a) * o0); g2.stroke();
+  }
+  g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = "15px sans-serif"; g2.textAlign = "center";
+  g2.fillText("앞", CX, CY - R - 28); g2.fillText("뒤", CX, CY + R + 40);
+  g2.textAlign = "right"; g2.fillText("왼쪽", CX - R - 26, CY + 5); g2.textAlign = "left"; g2.fillText("오른쪽", CX + R + 26, CY + 5); g2.textAlign = "center";
+  // touch ripples
   for (let i = ripples.length - 1; i >= 0; i--) {
     const rp = ripples[i], k = (t - rp.t0) / 900;
     if (k >= 1) { ripples.splice(i, 1); continue; }
@@ -351,35 +378,106 @@ function draw(t) {
     for (let j = 0; j < 3; j++) {
       const kj = k - j * 0.16; if (kj <= 0) continue;
       const e = 1 - (1 - kj) * (1 - kj);
-      g2.strokeStyle = rp.color; g2.globalAlpha = 0.7 * rp.s * (1 - kj) * (1 - kj);
-      g2.lineWidth = (2.5 - j * 0.6) * (1 - kj * 0.6);
+      g2.globalAlpha = 0.66 * rp.s * (1 - kj) * (1 - kj); g2.lineWidth = (1.8 - j * 0.4);
       g2.beginPath(); g2.arc(rp.x, rp.y, 10 + e * 70 * rp.s, 0, 7); g2.stroke();
     }
-    if (k < 0.25) { g2.globalAlpha = 0.8 * (1 - k / 0.25); g2.fillStyle = rp.color; g2.beginPath(); g2.arc(rp.x, rp.y, 6 * (1 - k / 0.25), 0, 7); g2.fill(); }
-    g2.globalAlpha = 1;
   }
-  // listener (head)
-  g2.fillStyle = "#e8ecf2";
-  for (const [dx, rr] of [[0, 15], [-14, 5], [14, 5]]) { g2.beginPath(); g2.arc(CX + dx, CY, rr, 0, 7); g2.fill(); }
-  g2.fillStyle = "#2a3446"; g2.beginPath(); g2.arc(CX, CY - 13, 3, 0, 7); g2.fill();
-  // dots
-  g2.font = "15px sans-serif";
+  // dotted guides
+  g2.setLineDash([2, 6]); g2.lineWidth = 1; g2.globalAlpha = 0.22;
+  for (const s of SOUNDS) if (!s.locked && s.on) { g2.beginPath(); g2.moveTo(CX, CY); g2.lineTo(CX + s.x * R, CY + s.y * R); g2.stroke(); }
+  g2.setLineDash([]);
+  // car
+  const carR = R * 0.18;
+  g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(CX, CY, carR, 0, 7); g2.fill();
+  g2.globalAlpha = 0.35; g2.lineWidth = 1.2; g2.beginPath(); g2.arc(CX, CY, carR, 0, 7); g2.stroke();
+  const cw = carR * 0.46, ch = carR * 1.12;
+  g2.globalAlpha = 0.9; g2.lineWidth = 1.6;
+  g2.beginPath(); g2.roundRect(CX - cw / 2, CY - ch / 2, cw, ch, cw / 2); g2.stroke();
+  g2.beginPath(); g2.ellipse(CX, CY + ch * 0.21, cw * 0.32, ch * 0.09, 0, 0.35, Math.PI - 0.35); g2.stroke();
+  g2.globalAlpha = 1; g2.fillStyle = INK; g2.beginPath(); g2.arc(CX, CY, 2.6, 0, 7); g2.fill();
+  // sounds
   for (const s of SOUNDS) {
     if (s.locked) continue;
     const a = s.anim, target = s.on ? 1 : 0;
     if (Math.abs(a.shown - target) > 0.001) { a.shown += (target - a.shown) * Math.min(1, dt * 10); busy = true; }
     if (a.pop > 0.001) { a.pop *= Math.exp(-dt * 6); busy = true; } else a.pop = 0;
-    const pop = 1 + 0.35 * a.pop * Math.cos(a.pop * 9), shown = 0.27 + 0.73 * a.shown;
-    const px = CX + s.x * R, py = CY + s.y * R, held = drag && drag.s === s;
-    g2.fillStyle = s.color;
-    g2.globalAlpha = 0.08 + 0.16 * a.shown; g2.beginPath(); g2.arc(px, py, 28 * pop * (held ? 1.25 : 1), 0, 7); g2.fill();
-    g2.globalAlpha = shown; g2.beginPath(); g2.arc(px, py, 15 * pop, 0, 7); g2.fill();
-    g2.fillStyle = "#fff"; g2.fillText(s.name, px, py + 34);
-    g2.globalAlpha = 1;
+    const pop = 1 + 0.3 * a.pop * Math.cos(a.pop * 9), px = CX + s.x * R, py = CY + s.y * R;
+    if (a.shown < 0.5) {
+      g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, 6, 0, 7); g2.fill();
+      g2.globalAlpha = 0.6; g2.lineWidth = 1.2; g2.beginPath(); g2.arc(px, py, 6 * pop, 0, 7); g2.stroke();
+      g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = "13px sans-serif"; g2.fillText(s.name, px, py + 24);
+    } else {
+      const r = (28 + 20 * s.volume) * pop * (drag && drag.s === s ? 1.12 : 1);
+      g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.fill();
+      g2.globalAlpha = 0.94; g2.lineWidth = 1.5; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.stroke();
+      if (s === selected) { g2.globalAlpha = 0.6; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7, 0, 7); g2.stroke(); }
+      drawIcon(g2, s.id, px, py, r * 0.86, 0.92);
+      g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = "bold 17px sans-serif"; g2.fillText(s.name, px, py + r + 24);
+      g2.fillStyle = MUTED; g2.font = "12px ui-monospace, Menlo, monospace"; g2.fillText(`${sideText(s.x, s.y)}  /  ${Math.round(s.volume * 100)}`, px, py + r + 44);
+    }
   }
+  g2.globalAlpha = 1;
   if (busy) requestDraw(); else lastFrame = 0;
 }
-function drop(x, y, color, s) { ripples.push({ x, y, color, s, t0: performance.now() }); if (ripples.length > 8) ripples.shift(); requestDraw(); }
+
+// ── Line-art icons (same patterns as the app's LineArt) ────────────────────
+const PATTERN = { rain: "RAIN", r_jeonju: "RAIN", waves: "WAVES", r_hangang: "WAVES", r_yeosu: "WAVES", r_tongyeong: "WAVES", r_udo: "WAVES", s_yangyang: "WAVES", s_haeundae: "WAVES",
+  wind: "WIND", r_jeju: "WIND", s_boseong: "WIND", fire: "FLAME", birds: "BIRDS", u_harbor: "BIRDS", r_cheorwon: "BIRDS", r_ulleung: "BIRDS", s_gasiri: "BIRDS",
+  pad: "RINGS", r_chuncheon: "RINGS", r_namhae: "RINGS", thunder: "ZIGZAG", cmb: "STARS", r_taean: "STARS", saturn: "SATURN", jupiter: "BANDS",
+  u_airport: "PLANE", u_library: "BOOKS", u_temple: "BELL", u_station: "RAILS", u_valley: "DROPS", r_danyang: "DROPS", u_cafe: "STEAM", u_baseball: "SEAM",
+  r_suncheon: "REEDS", s_mindungsan: "REEDS", r_andong: "BAMBOO", s_damyang: "BAMBOO", s_daegwallyeong: "SNOW", s_pyeongchang: "SNOW", s_hwacheon: "CRACK",
+  s_jinhae: "LEAVES", s_maisan: "LEAVES", s_naejangsan: "LEAVES" };
+function seeded(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909), (h >>>= 0) / 4294967296)); }
+function drawIcon(c, id, cx, cy, r, alpha) {
+  const rnd = seeded(id), L = (x1, y1, x2, y2) => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
+  const curve = (f, n = 40) => { c.beginPath(); for (let i = 0; i <= n; i++) { const [x, y] = f(i / n); i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); };
+  c.save(); c.beginPath(); c.arc(cx, cy, r * 0.96, 0, 7); c.clip();
+  c.globalAlpha = alpha; c.strokeStyle = INK; c.fillStyle = INK; c.lineWidth = Math.max(0.8, r * 0.028); c.lineCap = "round"; c.lineJoin = "round";
+  switch (PATTERN[id] || "RINGS") {
+    case "RAIN": for (let i = 0; i < 26; i++) { const x = cx - r + rnd() * 2 * r, y = cy - r + rnd() * 2 * r, l = r * (0.18 + rnd() * 0.22); L(x, y, x - l * 0.35, y + l); } break;
+    case "WAVES": for (let k = -3; k <= 3; k++) curve((u) => [cx - r + 2 * r * u, cy + k * r * 0.24 + Math.sin(u * Math.PI * 3 + k) * r * 0.07]); break;
+    case "WIND": case "BANDS":
+      for (let k = -4; k <= 4; k++) { const amp = r * (0.03 + 0.05 * rnd()), ph = rnd() * 6; curve((u) => [cx - r + 2 * r * u, cy + k * r * 0.2 + Math.sin(u * Math.PI * 2 + ph) * amp]); }
+      if (PATTERN[id] === "BANDS") { c.beginPath(); c.ellipse(cx + r * 0.29, cy + r * 0.21, r * 0.17, r * 0.09, 0, 0, 7); c.stroke(); } break;
+    case "FLAME": {
+      const top = cy - r * 0.78, bot = cy + r * 0.72;
+      for (let k = -4; k <= 4; k++) { c.beginPath(); c.moveTo(cx, top); c.bezierCurveTo(cx + k * r * 0.1, cy - r * 0.2, cx + k * r * 0.09, cy + r * 0.3, cx + k * r * 0.02, bot); c.stroke(); }
+      c.beginPath(); c.moveTo(cx, top); c.bezierCurveTo(cx + r * 0.62, cy - r * 0.05, cx + r * 0.4, bot, cx, bot); c.bezierCurveTo(cx - r * 0.4, bot, cx - r * 0.62, cy - r * 0.05, cx, top); c.stroke(); break;
+    }
+    case "BIRDS": for (let row = 0; row < 4; row++) for (let i = 0; i < 4; i++) {
+      const y = cy - r * 0.45 + row * r * 0.32, x = cx - r * 0.75 + i * r * 0.45 + (row % 2) * r * 0.2, w = r * (0.12 + rnd() * 0.06);
+      c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w / 2, y - w * 0.7, x, y); c.quadraticCurveTo(x + w / 2, y - w * 0.7, x + w, y); c.stroke(); } break;
+    case "RINGS": for (let k = 1; k <= 7; k++) { c.beginPath(); c.arc(cx, cy, (r * k) / 7.6, 0, 7); c.stroke(); } break;
+    case "ZIGZAG": for (let k = -2; k <= 2; k++) { c.beginPath(); let x = cx + k * r * 0.34, y = cy - r; c.moveTo(x, y); for (let i = 0; i < 6; i++) { x += (i % 2 ? -1 : 1) * r * 0.16; y += r * 0.34; c.lineTo(x, y); } c.stroke(); } break;
+    case "STARS": for (let i = 0; i < 70; i++) { c.beginPath(); c.arc(cx - r + rnd() * 2 * r, cy - r + rnd() * 2 * r, (0.4 + rnd() * 1.1) * Math.max(0.6, r / 30), 0, 7); c.fill(); } break;
+    case "SATURN": c.beginPath(); c.arc(cx, cy, r * 0.36, 0, 7); c.stroke();
+      for (const s2 of [0.82, 0.7]) { c.beginPath(); c.ellipse(cx, cy, r * s2, r * s2 * 0.24, -0.31, 0, 7); c.stroke(); } break;
+    case "PLANE": for (let k = -3; k <= 3; k++) for (let x = cx - r; x < cx + r; x += r * 0.3) L(x, cy + k * r * 0.22, x + r * 0.16, cy + k * r * 0.22); break;
+    case "BOOKS": for (let i = 0; i < 9; i++) { const x = cx - r * 0.7 + i * r * 0.17; L(x, cy + r * 0.55, x, cy + r * 0.55 - r * (0.6 + rnd() * 0.5)); } L(cx - r, cy + r * 0.55, cx + r, cy + r * 0.55); break;
+    case "BELL": c.beginPath(); c.moveTo(cx - r * 0.5, cy + r * 0.45); c.bezierCurveTo(cx - r * 0.45, cy - r * 0.2, cx - r * 0.3, cy - r * 0.6, cx, cy - r * 0.6);
+      c.bezierCurveTo(cx + r * 0.3, cy - r * 0.6, cx + r * 0.45, cy - r * 0.2, cx + r * 0.5, cy + r * 0.45); c.closePath(); c.stroke();
+      for (let k = 1; k <= 3; k++) L(cx - r * 0.46, cy + r * (0.45 - k * 0.22), cx + r * 0.46, cy + r * (0.45 - k * 0.22)); break;
+    case "RAILS": L(cx - r * 0.15, cy - r, cx - r * 0.55, cy + r); L(cx + r * 0.15, cy - r, cx + r * 0.55, cy + r);
+      for (let i = 0; i < 8; i++) { const u = i / 7, w = r * (0.2 + 0.4 * u); L(cx - w, cy - r + 2 * r * u, cx + w, cy - r + 2 * r * u); } break;
+    case "DROPS": for (let col = -3; col <= 3; col++) for (let i = 0; i < 5; i++) {
+      const x = cx + col * r * 0.26, y = cy - r * 0.8 + i * r * 0.4 + (col % 2) * r * 0.2;
+      c.beginPath(); c.moveTo(x, y - r * 0.08); c.quadraticCurveTo(x + r * 0.06, y + r * 0.02, x, y + r * 0.05); c.quadraticCurveTo(x - r * 0.06, y + r * 0.02, x, y - r * 0.08); c.stroke(); } break;
+    case "STEAM": for (let k = -1; k <= 1; k++) curve((u) => [cx + k * r * 0.3 + Math.sin(u * Math.PI * 2 + k) * r * 0.12, cy + r * 0.7 - 1.4 * r * u], 30); break;
+    case "SEAM": c.beginPath(); c.arc(cx, cy, r * 0.75, 0, 7); c.stroke(); c.beginPath(); c.ellipse(cx - r * 0.75, cy, r * 0.55, r * 0.75, 0, -1.05, 1.05); c.stroke();
+      c.beginPath(); c.ellipse(cx + r * 0.75, cy, r * 0.55, r * 0.75, 0, Math.PI - 1.05, Math.PI + 1.05); c.stroke(); break;
+    case "REEDS": for (let i = 0; i < 11; i++) { const x = cx - r * 0.8 + i * r * 0.16, top = cy - r * (0.2 + rnd() * 0.6);
+      c.beginPath(); c.moveTo(x, cy + r); c.quadraticCurveTo(x + r * 0.05, cy, x + r * 0.12, top); c.stroke(); c.beginPath(); c.ellipse(x + r * 0.12, top - r * 0.06, r * 0.04, r * 0.08, 0, 0, 7); c.stroke(); } break;
+    case "BAMBOO": for (let i = 0; i < 6; i++) { const x = cx - r * 0.65 + i * r * 0.26; L(x, cy - r, x, cy + r); for (let j = 0; j < 5; j++) { const y = cy - r + (j + rnd() * 0.4) * r * 0.45; L(x - r * 0.04, y, x + r * 0.04, y); } } break;
+    case "SNOW": for (let i = 0; i < 40; i++) { const x = cx - r + rnd() * 2 * r, y = cy - r + rnd() * 2 * r; c.beginPath(); c.arc(x, y, 0.6 + rnd(), 0, 7); c.fill(); if (i % 3 === 0) L(x, y, x - r * 0.2, y - r * 0.08); } break;
+    case "CRACK": for (let k = 0; k < 5; k++) { let x = cx, y = cy, a = (k * Math.PI * 2) / 5 + rnd(); c.beginPath(); c.moveTo(x, y);
+      for (let i = 0; i < 5; i++) { a += (rnd() - 0.5) * 0.8; x += Math.cos(a) * r * 0.22; y += Math.sin(a) * r * 0.22; c.lineTo(x, y); } c.stroke(); } break;
+    case "LEAVES": for (let i = 0; i < 9; i++) { const x = cx - r * 0.7 + rnd() * 1.4 * r, y = cy - r * 0.7 + rnd() * 1.4 * r, rot = rnd() * Math.PI;
+      c.beginPath(); c.ellipse(x, y, r * 0.16, r * 0.07, rot, 0, 7); c.stroke(); L(x - Math.cos(rot) * r * 0.16, y - Math.sin(rot) * r * 0.16, x + Math.cos(rot) * r * 0.16, y + Math.sin(rot) * r * 0.16); } break;
+  }
+  c.restore();
+}
+
+function drop(x, y, color, s) { ripples.push({ x, y, s, t0: performance.now() }); if (ripples.length > 8) ripples.shift(); requestDraw(); }
 function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 function nearest(x, y) {
   let best = null, bd = 40;
@@ -408,42 +506,105 @@ cv.addEventListener("pointerup", (e) => {
   const s = drag.s;
   if (s && !drag.moved) toggle(s);
   else if (s) { const r = cv.getBoundingClientRect(); drop(e.clientX - r.left, e.clientY - r.top, s.color, 0.8); save(); }
+  if (s) { selected = s; refresh(); }
   drag = null; requestDraw();
 });
 function toggle(s) {
+  selected = s;
   s.on = !s.on; s.anim.pop = 1; drop(CX + s.x * R, CY + s.y * R, s.color, 1.3); buzz(15);
   syncVoices(); save(); refresh();
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────
+function presetName() {
+  for (const b of document.querySelectorAll(".preset")) {
+    const ids = b.dataset.preset.split(",");
+    if (SOUNDS.every((s) => s.locked || s.on === ids.includes(s.id))) return b.textContent;
+  }
+  return "나만의 소리";
+}
+function drawTile(t) {
+  const s = t.s, c = t.c, d = window.devicePixelRatio || 1, w = c.clientWidth || 96;
+  c.width = w * d; c.height = w * d;
+  const x = c.getContext("2d"); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, w);
+  const cx = w / 2, cy = w / 2, r = w * 0.32;
+  x.strokeStyle = INK; x.lineWidth = 1.4; x.globalAlpha = s.on ? 0.92 : 0.43;
+  x.beginPath(); x.arc(cx, cy, r, 0, 7); x.stroke();
+  drawIcon(x, s.id, cx, cy, r, s.on ? 0.92 : 0.37);
+  if (s.on) { x.globalAlpha = 0.92; x.lineWidth = 2; x.beginPath(); x.arc(cx, cy, r + 7, -Math.PI / 2, -Math.PI / 2 + (300 * s.volume * Math.PI) / 180); x.stroke(); }
+  if (s === selected) { x.globalAlpha = 0.6; x.lineWidth = 1; x.beginPath(); x.arc(cx, cy, r + 12, 0, 7); x.stroke(); }
+  t.el.classList.toggle("on", s.on);
+  t.vol.textContent = s.on ? Math.round(s.volume * 100) : "";
+}
+let tiles = [];
 function rows() {
-  const box = $("rows"); box.innerHTML = "";
+  const box = $("rows"); box.innerHTML = ""; tiles = [];
+  if (!selected || selected.locked) selected = SOUNDS.find((s) => !s.locked && s.on) || SOUNDS[0];
   for (const s of SOUNDS) {
     if (s.locked) continue;
-    const row = document.createElement("div"); row.className = "srow";
-    const b = document.createElement("button"); b.className = "btn"; b.dataset.id = s.id;
-    b.onclick = () => toggle(s);
-    const r = document.createElement("input"); r.type = "range"; r.min = 0; r.max = 100; r.value = Math.round(s.volume * 100);
-    r.oninput = () => { s.volume = r.value / 100; voices.get(s.id)?.volume(s.volume); save(); };
-    r.dataset.id = s.id;
-    row.append(b, r); box.append(row);
+    const el = document.createElement("button"); el.className = "tile"; el.setAttribute("aria-label", s.name);
+    const c = document.createElement("canvas"), b = document.createElement("b"), vol = document.createElement("small");
+    b.textContent = s.name; el.append(c, b, vol); box.append(el);
+    const t = { s, c, el, vol }; tiles.push(t);
+    el.onclick = () => { selected = s; toggle(s); };
+    el.oncontextmenu = (e) => { e.preventDefault(); selected = s; refresh(); };
   }
   refresh();
 }
-function refresh() {
-  $("play").textContent = playing ? "정지" : "재생";
-  for (const b of document.querySelectorAll(".srow .btn")) {
-    const s = SOUNDS.find((x) => x.id === b.dataset.id);
-    b.textContent = (s.on ? "● " : "○ ") + s.name;
-    b.style.background = s.on ? s.color : "var(--btn2)"; b.style.color = s.on ? "#0b0f17" : "#cfd6e2";
+// Tick slider: full ticks up to the thumb, dots after it.
+function tickSlider(canvas, get, set) {
+  const paint = () => {
+    const d = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = w * d; canvas.height = h * d;
+    const x = canvas.getContext("2d"); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h);
+    const left = 10, right = w - 10, cy = h / 2, thumb = left + (right - left) * get();
+    x.strokeStyle = INK; x.lineCap = "round";
+    for (let px = left; px <= right; px += 4.2) {
+      if (px <= thumb - 8) { x.globalAlpha = 0.9; x.lineWidth = 1.4; x.beginPath(); x.moveTo(px, cy - 9); x.lineTo(px, cy + 9); x.stroke(); }
+      else if (px >= thumb + 8) { x.globalAlpha = 0.35; x.lineWidth = 1.2; x.beginPath(); x.moveTo(px, cy - 1.5); x.lineTo(px, cy + 1.5); x.stroke(); }
+    }
+    x.globalAlpha = 1; x.fillStyle = "#111"; x.beginPath(); x.arc(thumb, cy, 8, 0, 7); x.fill();
+    x.lineWidth = 1.6; x.stroke(); x.fillStyle = INK; x.beginPath(); x.arc(thumb, cy, 2.2, 0, 7); x.fill();
+  };
+  const at = (e) => { const r = canvas.getBoundingClientRect(); set(Math.max(0, Math.min(1, (e.clientX - r.left - 10) / (r.width - 20)))); paint(); };
+  canvas.addEventListener("pointerdown", (e) => { canvas.setPointerCapture(e.pointerId); at(e); });
+  canvas.addEventListener("pointermove", (e) => { if (e.buttons) at(e); });
+  canvas.tabIndex = 0;
+  canvas.addEventListener("keydown", (e) => { const step = e.key === "ArrowRight" ? 0.05 : e.key === "ArrowLeft" ? -0.05 : 0; if (step) { set(Math.max(0, Math.min(1, get() + step))); paint(); } });
+  return paint;
+}
+const paintSel = tickSlider($("selSlider"), () => (selected ? selected.volume : 0), (v) => { if (!selected) return; selected.volume = v; voices.get(selected.id)?.volume(v); save(); refreshLight(); });
+const paintMaster = tickSlider($("masterSlider"), () => S.master, (v) => { S.master = v; if (masterGain) masterGain.gain.setTargetAtTime(v * 1.6, ctx.currentTime, 0.05); $("masterVal").textContent = Math.round(v * 100); save(); });
+function refreshLight() {
+  for (const t of tiles) drawTile(t);
+  if (selected) {
+    $("selName").textContent = selected.name;
+    const side = sideText(selected.x, selected.y), where = /^(오른쪽|왼쪽)/.test(side) ? side.replace(" ", ` ${selected.y <= 0 ? "앞" : "뒤"} `) : side;
+    $("selInfo").textContent = `볼륨 ${Math.round(selected.volume * 100)}  /  ${where}`;
   }
-  for (const r of document.querySelectorAll(".srow input")) r.disabled = !SOUNDS.find((x) => x.id === r.dataset.id).on;
+  paintSel(); requestDraw();
+}
+function refresh() {
+  const on = SOUNDS.filter((s) => !s.locked && s.on).length, name = presetName();
+  $("title").textContent = name;
+  $("status").textContent = playing ? `소리 ${on}개 재생 중` : `멈춤 · 소리 ${on}개 켜짐`;
+  $("play").className = "round " + (playing ? "playing" : "paused");
+  $("play").setAttribute("aria-label", playing ? "정지" : "재생");
+  for (const b of document.querySelectorAll(".preset")) b.classList.toggle("active", b.textContent === name);
+  refreshLight();
+  $("masterVal").textContent = Math.round(S.master * 100); paintMaster();
   const left = Math.ceil(sleepLeft() / 60e3);
-  $("sleep").textContent = sleepMin ? `수면 타이머: ${sleepMin}분 (${left}분 남음)` : "수면 타이머: 끔";
-  $("motion").textContent = "움직임: " + MOTION[S.motion];
+  $("sleep").querySelector("b").textContent = sleepMin ? `${left}분 남음` : "끔";
+  $("motion").querySelector("b").textContent = ["멈춤", "행성 궤도", "360° 회전"][S.motion];
   $("dex").textContent = `소리 도감 (${Object.keys(S.regions).length + Object.keys(S.stamps).length + Object.keys(S.spots).length}/${REGIONS.length + (places ? places.length : 25) + SPOTS.length})`;
   $("darkText").textContent = "화면을 누르면 돌아와요" + (sleepMin ? `\n수면 타이머 ${left}분 남음` : "");
 }
+const tickClock = () => { $("clock").textContent = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }); };
+tickClock(); setInterval(tickClock, 20000);
+$("more").onclick = () => ($("moreSheet").hidden = false);
+$("moreClose").onclick = () => ($("moreSheet").hidden = true);
+$("moreSheet").onclick = (e) => { if (e.target.id === "moreSheet") $("moreSheet").hidden = true; };
+for (const id of ["places", "dex", "reset", "credits"]) $(id).addEventListener("click", () => ($("moreSheet").hidden = true));
 $("play").onclick = () => (playing ? stop() : play());
 for (const b of document.querySelectorAll(".preset")) b.onclick = () => {
   const ids = b.dataset.preset.split(",");
@@ -458,8 +619,6 @@ $("sleep").onclick = () => {
   if (sleepMin && !playing) play();
   applyScene(); refresh();
 };
-$("master").value = Math.round(S.master * 100);
-$("master").oninput = (e) => { S.master = e.target.value / 100; if (masterGain) masterGain.gain.setTargetAtTime(S.master * 1.6, ctx.currentTime, 0.05); save(); };
 $("reset").onclick = () => { for (const s of SOUNDS) { s.x = s.hx; s.y = s.hy; } voices.forEach((v) => v.move()); save(); requestDraw(); };
 let wakeLock = null;
 $("dark").onclick = async () => {
@@ -470,7 +629,7 @@ $("darkOverlay").onclick = () => { $("darkOverlay").hidden = true; wakeLock?.rel
 
 // Water-drop ripple + press feel on every button
 document.addEventListener("pointerdown", (e) => {
-  const b = e.target.closest(".btn"); if (!b) return;
+  const b = e.target.closest(".btn, .tile, .cell"); if (!b) return;
   const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height), sp = document.createElement("span");
   sp.className = "drop"; sp.style.width = sp.style.height = d + "px";
   sp.style.left = e.clientX - r.left - d / 2 + "px"; sp.style.top = e.clientY - r.top - d / 2 + "px";

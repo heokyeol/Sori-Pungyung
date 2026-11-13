@@ -2,11 +2,12 @@ package dev.homesev.sounddrive;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -16,36 +17,38 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
- * Top-down stage: the listener (car or head) in the middle, front is up.
- * Drag a dot to move a sound, tap it to switch it on/off.
- * Touches leave water-drop ripples; dots pop and fade smoothly; orbiting sounds glide.
+ * Top-down stage in monochrome line art: the car in the middle, front is up, compass ticks
+ * around. Each sound that is on emits slow concentric ripples, so the field shows where the
+ * sound comes from. Drag a sound to move it, tap to switch it on/off (it also becomes the
+ * selected sound shown in the panel).
  */
 final class StageView extends View {
-    interface Listener { void onStageChanged(); }
+    interface Listener {
+        void onStageChanged();
+        default void onSelected(SoundSource s) {}
+    }
 
     private final SoundSource[] sources;
     private final Listener listener;
     private final boolean isCar;
     private final float dp, k;
-    private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG), dot = new Paint(Paint.ANTI_ALIAS_FLAG),
-            text = new Paint(Paint.ANTI_ALIAS_FLAG), car = new Paint(Paint.ANTI_ALIAS_FLAG),
-            wave = new Paint(Paint.ANTI_ALIAS_FLAG), bg = new Paint();
+    private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG), fill = new Paint(Paint.ANTI_ALIAS_FLAG),
+            text = new Paint(Paint.ANTI_ALIAS_FLAG), mono = new Paint(Paint.ANTI_ALIAS_FLAG), glow = new Paint();
     private float cx, cy, radius;
-    private SoundSource dragging;
+    private SoundSource dragging, selected;
     private float downX, downY, lastTickX, lastTickY;
-    private boolean moved, locked, animateAlways;
+    private boolean moved, locked, animateAlways, playing;
 
-    // Water-drop ripples
     private static final long RIPPLE_MS = 900;
-    private static final class Ripple { float x, y; int color; long start; float strength; }
+    private static final class Ripple { float x, y; long start; float strength; }
     private final List<Ripple> ripples = new ArrayList<>();
-
-    // Per-dot smooth state: shown 0..1 (fade), pop (scale kick after toggling)
     private final Map<SoundSource, float[]> anim = new HashMap<>();
     private long lastFrame;
+    private float wavePhase; // ripple fields drift outward while playing
 
     StageView(Context ctx, SoundSource[] sources, Listener listener, boolean isCar) {
         super(ctx);
@@ -54,26 +57,26 @@ final class StageView extends View {
         this.isCar = isCar;
         dp = ctx.getResources().getDisplayMetrics().density;
         k = isCar ? 1f : 0.75f;
-        ring.setStyle(Paint.Style.STROKE);
-        ring.setStrokeWidth(1.5f * dp);
-        ring.setColor(0x33FFFFFF);
-        wave.setStyle(Paint.Style.STROKE);
-        text.setColor(Color.WHITE);
+        line.setStyle(Paint.Style.STROKE);
+        line.setColor(Widgets.INK);
+        line.setStrokeCap(Paint.Cap.ROUND);
+        text.setColor(Widgets.INK);
         text.setTextAlign(Paint.Align.CENTER);
-        car.setColor(0xFFE8ECF2);
+        mono.setTypeface(Widgets.MONO);
+        mono.setTextAlign(Paint.Align.CENTER);
+        mono.setColor(Widgets.MUTED);
         setHapticFeedbackEnabled(true);
     }
 
-    /** While driving, moving sounds is locked to keep interaction minimal. */
     void setLocked(boolean locked) { this.locked = locked; invalidate(); }
-
-    /** Keep redrawing every frame (sounds are orbiting). */
     void setAnimating(boolean on) { animateAlways = on; if (on) postInvalidateOnAnimation(); }
+    void setPlaying(boolean on) { playing = on; postInvalidateOnAnimation(); }
+    void setSelected(SoundSource s) { selected = s; invalidate(); }
 
     @Override protected void onSizeChanged(int w, int h, int ow, int oh) {
         cx = w / 2f; cy = h / 2f;
-        radius = Math.min(w, h) / 2f - 60 * dp * k;
-        bg.setShader(new RadialGradient(cx, cy, Math.max(w, h) * 0.7f, 0xFF1B2333, 0xFF0B0F17, Shader.TileMode.CLAMP));
+        radius = Math.min(w, h) / 2f - 62 * dp * k;
+        glow.setShader(new RadialGradient(cx, cy, radius * 0.9f, 0x22FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
     }
 
     private float[] state(SoundSource s) {
@@ -82,87 +85,155 @@ final class StageView extends View {
         return st;
     }
 
+    /** "오른쪽 36°" — side and angle from straight ahead (0–180°). */
+    static String side(float x, float y) {
+        double deg = Math.toDegrees(Math.atan2(x, -y));
+        int a = (int) Math.round(Math.abs(deg));
+        if (a == 0 || a == 180) return (a == 0 ? "앞 " : "뒤 ") + a + "°";
+        return (deg > 0 ? "오른쪽 " : "왼쪽 ") + a + "°";
+    }
+
     @Override protected void onDraw(Canvas c) {
         long now = SystemClock.uptimeMillis();
         float dt = lastFrame == 0 ? 0.016f : Math.min(0.05f, (now - lastFrame) / 1000f);
         lastFrame = now;
-        boolean busy = animateAlways;
+        boolean busy = animateAlways || playing;
+        if (playing) wavePhase = (wavePhase + dt * 9 * dp) % (16 * dp);
 
-        c.drawRect(0, 0, getWidth(), getHeight(), bg);
-        for (float f : new float[] {0.33f, 0.66f, 1f}) c.drawCircle(cx, cy, radius * f, ring);
-        text.setAlpha(140);
-        text.setTextSize(18 * dp * k);
-        c.drawText("앞", cx, cy - radius - 12 * dp, text);
-        c.drawText("뒤", cx, cy + radius + 30 * dp, text);
+        c.drawColor(Widgets.BG);
+        c.drawCircle(cx, cy, radius * 0.9f, glow);
 
-        // Ripples under the dots
+        // Ripple fields from every sound that is on (the interference pattern)
+        float spacing = 16 * dp;
+        for (SoundSource s : sources) {
+            if (s.locked) continue;
+            float[] st = state(s);
+            if (st[0] < 0.02f) continue;
+            float px = cx + s.x * radius, py = cy + s.y * radius, maxR = radius * 1.25f;
+            line.setStrokeWidth(0.8f * dp);
+            for (float rr = 22 * dp + wavePhase; rr < maxR; rr += spacing) {
+                float a = (1 - rr / maxR);
+                line.setAlpha((int) (66 * a * a * st[0] * (0.5f + 0.5f * s.volume)));
+                c.drawCircle(px, py, rr, line);
+            }
+        }
+
+        // Compass ring: ticks every 5°, longer every 15°, cardinal marks with labels
+        line.setStrokeWidth(1.1f * dp);
+        line.setAlpha(110);
+        c.drawCircle(cx, cy, radius, line);
+        for (int d = 0; d < 360; d += 5) {
+            double a = Math.toRadians(d - 90);
+            boolean cardinal = d % 90 == 0, mid = d % 15 == 0;
+            float in = radius - (cardinal ? 0 : mid ? 9 * dp : 5 * dp), out = radius + (cardinal ? 18 * dp : mid ? 0 : 0);
+            line.setAlpha(cardinal ? 200 : mid ? 120 : 60);
+            c.drawLine(cx + (float) Math.cos(a) * in, cy + (float) Math.sin(a) * in, cx + (float) Math.cos(a) * out, cy + (float) Math.sin(a) * out, line);
+        }
+        text.setTypeface(Typeface.DEFAULT);
+        text.setTextSize(15 * dp * k);
+        text.setColor(Widgets.MUTED);
+        c.drawText("앞", cx, cy - radius - 28 * dp, text);
+        c.drawText("뒤", cx, cy + radius + 40 * dp, text);
+        text.setTextAlign(Paint.Align.RIGHT);
+        c.drawText("왼쪽", cx - radius - 26 * dp, cy + 5 * dp, text);
+        text.setTextAlign(Paint.Align.LEFT);
+        c.drawText("오른쪽", cx + radius + 26 * dp, cy + 5 * dp, text);
+        text.setTextAlign(Paint.Align.CENTER);
+
+        // Water-drop ripples from touches
         for (Iterator<Ripple> it = ripples.iterator(); it.hasNext(); ) {
             Ripple r = it.next();
             float t = (now - r.start) / (float) RIPPLE_MS;
             if (t >= 1f) { it.remove(); continue; }
             busy = true;
-            for (int i = 0; i < 3; i++) { // three rings, like a drop hitting water
+            for (int i = 0; i < 3; i++) {
                 float ti = t - i * 0.16f;
                 if (ti <= 0) continue;
                 float ease = 1 - (1 - ti) * (1 - ti);
-                wave.setColor(r.color);
-                wave.setAlpha((int) (180 * r.strength * (1 - ti) * (1 - ti)));
-                wave.setStrokeWidth((2.5f - i * 0.6f) * dp * (1 - ti * 0.6f));
-                c.drawCircle(r.x, r.y, (10 + ease * 70 * r.strength) * dp, wave);
-            }
-            if (t < 0.25f) { // the drop itself
-                dot.setColor(r.color);
-                dot.setAlpha((int) (200 * (1 - t / 0.25f)));
-                c.drawCircle(r.x, r.y, 6 * dp * (1 - t / 0.25f), dot);
+                line.setAlpha((int) (170 * r.strength * (1 - ti) * (1 - ti)));
+                line.setStrokeWidth((1.8f - i * 0.4f) * dp);
+                c.drawCircle(r.x, r.y, (10 + ease * 70 * r.strength) * dp, line);
             }
         }
 
-        // Listener in the middle
-        if (!isCar) {
-            car.setColor(0xFFE8ECF2);
-            c.drawCircle(cx, cy, 16 * dp, car);
-            c.drawCircle(cx - 15 * dp, cy, 5 * dp, car);
-            c.drawCircle(cx + 15 * dp, cy, 5 * dp, car);
-            car.setColor(0xFF2A3446);
-            c.drawCircle(cx, cy - 14 * dp, 3 * dp, car);
-        } else {
-            float cw = 34 * dp, ch = 62 * dp;
-            car.setColor(0xFFE8ECF2);
-            c.drawRoundRect(new RectF(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2), 12 * dp, 12 * dp, car);
-            car.setColor(0xFF2A3446);
-            c.drawRoundRect(new RectF(cx - cw / 2 + 5 * dp, cy - ch / 2 + 10 * dp, cx + cw / 2 - 5 * dp, cy - ch / 2 + 22 * dp), 4 * dp, 4 * dp, car);
+        // Faint dotted guides from the car to each sound that is on
+        Paint dash = new Paint(line);
+        dash.setPathEffect(new DashPathEffect(new float[] {2 * dp, 6 * dp}, 0));
+        dash.setStrokeWidth(1f * dp);
+        for (SoundSource s : sources) {
+            if (s.locked || !s.enabled) continue;
+            dash.setAlpha(55);
+            c.drawLine(cx, cy, cx + s.x * radius, cy + s.y * radius, dash);
         }
 
-        text.setTextSize(20 * dp * k);
+        // Car in the middle
+        float carR = radius * 0.18f;
+        fill.setColor(Widgets.BG);
+        c.drawCircle(cx, cy, carR, fill);
+        line.setStrokeWidth(1.2f * dp);
+        line.setAlpha(90);
+        c.drawCircle(cx, cy, carR, line);
+        line.setAlpha(230);
+        line.setStrokeWidth(1.6f * dp);
+        float cw = carR * 0.46f, ch = carR * 1.12f;
+        c.drawRoundRect(new RectF(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2), cw * 0.5f, cw * 0.5f, line);
+        c.drawArc(new RectF(cx - cw * 0.32f, cy + ch * 0.12f, cx + cw * 0.32f, cy + ch * 0.3f), 20, 140, false, line);
+        fill.setColor(Widgets.INK);
+        c.drawCircle(cx, cy, 2.6f * dp, fill);
+
+        // Sounds: small dots when off, line-art discs when on
         for (SoundSource s : sources) {
             if (s.locked) continue;
             float[] st = state(s);
             float target = s.enabled ? 1f : 0f;
             if (Math.abs(st[0] - target) > 0.001f) { st[0] += (target - st[0]) * Math.min(1f, dt * 10); busy = true; }
             if (st[1] > 0.001f) { st[1] *= (float) Math.exp(-dt * 6); busy = true; } else st[1] = 0;
-            float pop = 1f + 0.35f * st[1] * (float) Math.cos(st[1] * 9); // springy kick
-            float shown = 0.27f + 0.73f * st[0];
+            float pop = 1f + 0.3f * st[1] * (float) Math.cos(st[1] * 9);
             float px = cx + s.x * radius, py = cy + s.y * radius;
-            boolean held = s == dragging;
-            dot.setColor(s.color);
-            dot.setAlpha((int) (255 * (0.08f + 0.16f * st[0])));
-            c.drawCircle(px, py, 34 * dp * k * pop * (held ? 1.25f : 1f), dot);
-            dot.setAlpha((int) (255 * shown));
-            c.drawCircle(px, py, 20 * dp * k * pop, dot);
-            text.setAlpha((int) (255 * shown));
-            c.drawText(s.name, px, py + 44 * dp * k, text);
+            float on = st[0];
+            if (on < 0.5f) {
+                fill.setColor(Widgets.BG);
+                c.drawCircle(px, py, 6 * dp, fill);
+                line.setStrokeWidth(1.2f * dp);
+                line.setAlpha(150);
+                c.drawCircle(px, py, 6 * dp * pop, line);
+                text.setTypeface(Typeface.DEFAULT);
+                text.setTextSize(13 * dp * k);
+                text.setColor(Widgets.MUTED);
+                c.drawText(s.name, px, py + 24 * dp * k, text);
+            } else {
+                float r = (28 + 20 * s.volume) * dp * k * pop * (s == dragging ? 1.12f : 1f);
+                fill.setColor(Widgets.BG);
+                c.drawCircle(px, py, r, fill);
+                line.setStrokeWidth(1.5f * dp);
+                line.setAlpha(240);
+                c.drawCircle(px, py, r, line);
+                if (s == selected) {
+                    line.setStrokeWidth(1f * dp);
+                    line.setAlpha(150);
+                    c.drawCircle(px, py, r + 7 * dp, line);
+                }
+                LineArt.draw(c, s.id, px, py, r * 0.86f, 235, dp);
+                text.setTypeface(Typeface.DEFAULT_BOLD);
+                text.setTextSize(17 * dp * k);
+                text.setColor(Widgets.INK);
+                c.drawText(s.name, px, py + r + 24 * dp * k, text);
+                mono.setTextSize(12 * dp * k);
+                c.drawText(side(s.x, s.y) + "  /  " + Math.round(s.volume * 100), px, py + r + 44 * dp * k, mono);
+            }
         }
         if (locked) {
-            text.setAlpha(200);
-            text.setTextSize(19 * dp * k);
-            c.drawText("주행 중에는 위치 이동이 잠겨요", cx, getHeight() - 14 * dp, text);
+            text.setTypeface(Typeface.DEFAULT);
+            text.setTextSize(15 * dp * k);
+            text.setColor(Widgets.MUTED);
+            c.drawText("주행 중에는 위치 이동이 잠겨요", cx, getHeight() - 16 * dp, text);
         }
         if (busy) postInvalidateOnAnimation(); else lastFrame = 0;
     }
 
-    private void drop(float x, float y, int color, float strength) {
+    private void drop(float x, float y, float strength) {
         Ripple r = new Ripple();
-        r.x = x; r.y = y; r.color = color; r.strength = strength;
+        r.x = x; r.y = y; r.strength = strength;
         r.start = SystemClock.uptimeMillis();
         ripples.add(r);
         if (ripples.size() > 8) ripples.remove(0);
@@ -175,7 +246,7 @@ final class StageView extends View {
             case MotionEvent.ACTION_DOWN:
                 dragging = nearest(x, y);
                 downX = lastTickX = x; downY = lastTickY = y; moved = false;
-                drop(x, y, dragging != null ? dragging.color : 0xFFFFFFFF, dragging != null ? 1f : 0.6f);
+                drop(x, y, dragging != null ? 1f : 0.6f);
                 performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 invalidate();
                 return true;
@@ -187,7 +258,7 @@ final class StageView extends View {
                     float d = (float) Math.hypot(nx, ny);
                     if (d > 1) { nx /= d; ny /= d; }
                     dragging.x = nx; dragging.y = ny;
-                    if (Math.hypot(x - lastTickX, y - lastTickY) > 40 * dp) { // light ticks while dragging
+                    if (Math.hypot(x - lastTickX, y - lastTickY) > 40 * dp) {
                         lastTickX = x; lastTickY = y;
                         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
                     }
@@ -198,13 +269,15 @@ final class StageView extends View {
                 if (dragging != null) {
                     if (!moved) {
                         dragging.enabled = !dragging.enabled;
-                        state(dragging)[1] = 1f; // pop
-                        drop(cx + dragging.x * radius, cy + dragging.y * radius, dragging.color, 1.3f);
+                        state(dragging)[1] = 1f;
+                        drop(cx + dragging.x * radius, cy + dragging.y * radius, 1.3f);
                         performHapticFeedback(android.os.Build.VERSION.SDK_INT >= 30
                                 ? HapticFeedbackConstants.CONFIRM : HapticFeedbackConstants.VIRTUAL_KEY);
                     } else {
-                        drop(x, y, dragging.color, 0.8f);
+                        drop(x, y, 0.8f);
                     }
+                    selected = dragging;
+                    listener.onSelected(dragging);
                     dragging = null;
                     invalidate();
                     listener.onStageChanged();
@@ -220,15 +293,14 @@ final class StageView extends View {
 
     @Override public boolean performClick() { return super.performClick(); }
 
-    /** Animate the pop for a toggle that came from elsewhere (e.g. the list buttons). */
     void pop(SoundSource s) {
         state(s)[1] = 1f;
-        drop(cx + s.x * radius, cy + s.y * radius, s.color, 1.1f);
+        drop(cx + s.x * radius, cy + s.y * radius, 1.1f);
     }
 
     private SoundSource nearest(float x, float y) {
         SoundSource best = null;
-        double bestD = 48 * dp;
+        double bestD = 52 * dp;
         for (SoundSource s : sources) {
             if (s.locked) continue;
             double d = Math.hypot(cx + s.x * radius - x, cy + s.y * radius - y);

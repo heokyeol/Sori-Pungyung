@@ -25,7 +25,8 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
     /** Last suggested seasonal landmark (lat, lon, name), for "거기로 안내해 줘". */
     private double[] lastSpot;
     private String lastSpotName;
-    private Button micBtn;
+    private Widgets.IconButton micBtn;
+    private Float outsideC;
     private String voiceStatus = "";
     private Switch speedComp, moodSwitch, windowSwitch;
     private boolean driving;
@@ -65,7 +66,9 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         if (checkSelfPermission(MIC) != PackageManager.PERMISSION_GRANTED) { requestPermissions(new String[] {MIC}, 9); return; }
         voice.listen(new VoiceControl.Heard() {
             @Override public void onListening(boolean on) {
-                micBtn.setText(on ? "🎙 듣고 있어요…" : "🎤 음성 명령");
+                micBtn.setActive(on);
+                voiceStatus = on ? "듣고 있어요…" : voiceStatus;
+                refresh();
                 if (on) player.engine.mixer.duck = 0.3f; else player.engine.mixer.duck = 1f;
             }
             @Override public void onPartial(String text) { voiceStatus = "\"" + text + "\""; refresh(); }
@@ -257,9 +260,6 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
 
     // ── Build-specific UI ──────────────────────────────────────────────────
     @Override protected void addExtras(LinearLayout panel) {
-        micBtn = bigButton("🎤 음성 명령", 0xFF3D7BFF);
-        micBtn.setOnClickListener(v -> listen());
-        panel.addView(micBtn, matchWrap(px(16)));
 
         speedComp = switchRow("속도가 빠를수록 볼륨 보정 (도로 소음 대응)", player.prefs.getBoolean("speedComp", true));
         speedComp.setOnCheckedChangeListener((v, on) -> { saveExtras(); applyVehicle(); });
@@ -273,6 +273,19 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         windowSwitch.setOnCheckedChangeListener((v, on) -> { saveExtras(); applyWindow(); refresh(); });
         panel.addView(windowSwitch, matchWrap(px(12)));
     }
+
+    /** Mic button next to the clock: talk to the app (Pleos SpeechToText). */
+    @Override protected void addHeaderActions(LinearLayout header) {
+        micBtn = new Widgets.IconButton(this, Widgets.IconButton.Kind.MIC);
+        micBtn.setOnClickListener(v -> listen());
+        header.addView(micBtn, new LinearLayout.LayoutParams(px(40), px(40)));
+    }
+
+    @Override protected String headerTemp() { return outsideC == null ? null : String.format(Locale.KOREA, "%.0f°C", outsideC); }
+
+    @Override public void onOutsideTemp(Float c) { outsideC = c; }
+
+    @Override protected boolean darkKeepsMoodDefault() { return moodSwitch != null && moodSwitch.isChecked(); }
 
     @Override protected void addDarkButtons(LinearLayout panel) {
         LinearLayout row = new LinearLayout(this);
