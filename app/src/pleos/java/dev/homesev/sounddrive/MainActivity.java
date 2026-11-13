@@ -290,10 +290,10 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
     @Override protected void addDarkButtons(LinearLayout panel) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        Button withMood = bigButton("무드등 켜고 어둡게", 0xFF2A3446);
+        Button withMood = bigButton("무드등 켜고 어둡게", Widgets.PANEL);
         withMood.setTextSize(19 * k);
         withMood.setOnClickListener(v -> setDark(true, true));
-        Button fully = bigButton("완전히 어둡게", 0xFF2A3446);
+        Button fully = bigButton("완전히 어둡게", Widgets.PANEL);
         fully.setTextSize(19 * k);
         fully.setOnClickListener(v -> setDark(true, false));
         row.addView(withMood, weight());
@@ -319,7 +319,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         String mood = !moodSwitch.isChecked() ? "" : moodZones < 0 ? " · 무드등 확인 중" : moodZones == 0 ? " · 무드등 제어 불가"
                 : moodZones == 1 ? " · 무드등 1구역(색 흐름)" : " · 무드등 " + moodZones + "구역";
         String win = Boolean.TRUE.equals(windowOpen) ? " · 창문 열림" + (windowSwitch.isChecked() ? "(소리 줄임)" : "") : "";
-        String unlock = (pendingUnlock != null ? " · 🔓 새 소리 열림" : "") + (voiceStatus.isEmpty() ? "" : " · 🎤 " + voiceStatus);
+        String unlock = (pendingUnlock != null ? " · 새 소리 열림" : "") + (voiceStatus.isEmpty() ? "" : " · 음성: " + voiceStatus);
         return " · " + sp + " · " + gr + (db > 0.05f ? String.format(Locale.KOREA, " · 볼륨 +%.1fdB", db) : "")
                 + (driving ? " · 주행 중" : "") + mood + win + unlock;
     }

@@ -98,11 +98,31 @@ final class Player {
         engine.mixer.master = prefs.getFloat("master", 0.8f);
         engine.mixer.motion = prefs.getInt("motion", Mixer.MOTION_NONE);
         main.post(tick);
-        // Decode recorded loops off the main thread; each source uses its synth until then.
-        new Thread(() -> {
-            for (SoundSource s : sources) if (s.asset != null) s.loop = AssetLoop.decode(app, s.asset);
-            if (birds != null) loadBirdClips();
-        }, "SoundDriveDecode").start();
+        // Recordings are decoded only for sounds that are on (≈17 MB each), and dropped after a
+        // minute off, so dozens of unlockable sounds don't exhaust memory.
+        Thread loader = new Thread(() -> {
+            boolean birdsLoaded = false;
+            while (true) {
+                long now = SystemClock.elapsedRealtime();
+                for (SoundSource s : sources) {
+                    if (s.asset == null) continue;
+                    if (s.enabled && !s.locked) {
+                        s.lastWanted = now;
+                        if (s.loopPcm == null && !s.loadFailed) {
+                            AssetLoop.Pcm p = AssetLoop.decode(app, s.asset);
+                            if (p != null) { s.loopCh = p.ch; s.loopPcm = p.data; } else s.loadFailed = true;
+                        }
+                    } else if (s.loopPcm != null && now - s.lastWanted > 60_000) {
+                        s.loopPcm = null;
+                    }
+                }
+                // Bird calls after the first pass, so sounds that are on start first.
+                if (!birdsLoaded && birds != null) { loadBirdClips(); birdsLoaded = true; }
+                try { Thread.sleep(200); } catch (InterruptedException e) { return; }
+            }
+        }, "SoundDriveDecode");
+        loader.setDaemon(true);
+        loader.start();
         new Thread(() -> {
             try (java.io.Reader r = new java.io.InputStreamReader(app.getAssets().open("places.tsv"), java.nio.charset.StandardCharsets.UTF_8)) {
                 unlocks.load(r);
@@ -124,8 +144,8 @@ final class Player {
                 if (p.length < 3) continue;
                 int[] idx = new int[p.length - 1];
                 for (int i = 1; i < p.length; i++) idx[i - 1] = Integer.parseInt(p[i]);
-                float[][] d = AssetLoop.decode(app, "birds_" + p[0] + ".ogg");
-                if (d != null) birds.setClips(p[0], d[0], idx);
+                float[] d = AssetLoop.decodeMonoFloat(app, "birds_" + p[0] + ".ogg");
+                if (d != null) birds.setClips(p[0], d, idx);
             }
         } catch (Exception e) {
             android.util.Log.w("SoundDrive", "bird clips", e);

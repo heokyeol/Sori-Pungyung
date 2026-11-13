@@ -15,6 +15,21 @@ final class Widgets {
 
     static final int INK = 0xFFEDEDED, MUTED = 0xFF8A8A8A, FAINT = 0x33FFFFFF, BG = 0xFF0B0B0B, PANEL = 0xFF111111;
     static final Typeface MONO = Typeface.MONOSPACE;
+    /** Size multiplier for the current screen (the car head unit is ≈1.8). */
+    static float scale = 1f;
+
+    /** Background that draws a bottom line when on (active preset tab). */
+    static final class Underline extends android.graphics.drawable.Drawable {
+        private final Paint p = new Paint();
+        private final int thickness;
+        private boolean on;
+        Underline(int thicknessPx) { thickness = thicknessPx; p.setColor(INK); }
+        void setOn(boolean v) { on = v; invalidateSelf(); }
+        @Override public void draw(Canvas c) { if (on) { android.graphics.Rect b = getBounds(); c.drawRect(b.left, b.bottom - thickness, b.right, b.bottom, p); } }
+        @Override public void setAlpha(int a) {}
+        @Override public void setColorFilter(android.graphics.ColorFilter f) {}
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
 
     /** A slider drawn as a row of ticks: full ticks up to the thumb, dots after it. */
     static final class TickSlider extends View {
@@ -26,7 +41,7 @@ final class Widgets {
 
         TickSlider(Context c) {
             super(c);
-            dp = c.getResources().getDisplayMetrics().density;
+            dp = c.getResources().getDisplayMetrics().density * scale;
             p.setStrokeCap(Paint.Cap.ROUND);
             setMinimumHeight((int) (44 * dp));
         }
@@ -90,7 +105,7 @@ final class Widgets {
         SoundTile(Context c, SoundSource s, float textScale) {
             super(c);
             this.s = s;
-            dp = c.getResources().getDisplayMetrics().density;
+            dp = c.getResources().getDisplayMetrics().density * scale;
             k = textScale;
             p.setStyle(Paint.Style.STROKE);
             p.setStrokeCap(Paint.Cap.ROUND);
@@ -99,7 +114,8 @@ final class Widgets {
 
         @Override protected void onMeasure(int w, int h) {
             int width = MeasureSpec.getSize(w);
-            setMeasuredDimension(width, (int) (width * 0.62f + 52 * dp * k));
+            float r = Math.min(width * 0.3f, 40 * dp); // same as onDraw
+            setMeasuredDimension(width, (int) (r * 2 + 10 * dp + (24 + 19 + 10) * dp * k / scale));
         }
 
         @Override protected void onDraw(Canvas c) {
@@ -122,15 +138,17 @@ final class Widgets {
                 c.drawCircle(cx, cy, r + 12 * dp, p);
             }
             t.setColor(on ? INK : MUTED);
-            t.setTextSize(15 * dp * k);
+            t.setTextSize(15 * dp * k / scale);
             t.setTypeface(on ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-            float ty = cy + r + 24 * dp * k;
+            float maxW = getWidth() - 6 * dp, w = t.measureText(s.name);
+            if (w > maxW) t.setTextSize(t.getTextSize() * maxW / w); // long names shrink to fit their cell
+            float ty = cy + r + 24 * dp * k / scale;
             c.drawText(s.name, cx, ty, t);
             if (on) {
                 t.setTypeface(MONO);
                 t.setColor(MUTED);
-                t.setTextSize(12 * dp * k);
-                c.drawText(String.valueOf(Math.round(s.volume * 100)), cx, ty + 19 * dp * k, t);
+                t.setTextSize(12 * dp * k / scale);
+                c.drawText(String.valueOf(Math.round(s.volume * 100)), cx, ty + 19 * dp * k / scale, t);
             }
         }
     }

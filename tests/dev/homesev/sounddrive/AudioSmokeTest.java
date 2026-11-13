@@ -27,6 +27,7 @@ public final class AudioSmokeTest {
 
         // 2) Every generator renders finite, non-silent, bounded audio for 20 s.
         for (SoundSource s : Sources.all()) {
+            if (s.asset != null) s.loadFailed = true; // no assets on the PC: test the synth fallback
             if (s instanceof Sources.Recorded) continue; // recording-only sounds are silent without the asset
             float[] buf = new float[512];
             double sum = 0, peak = 0;
@@ -49,7 +50,7 @@ public final class AudioSmokeTest {
 
         // 3) Full mix: all on, output within [-1,1], fades in, panning reflected in L/R energy.
         SoundSource[] all = Sources.all();
-        for (SoundSource s : all) s.enabled = true;
+        for (SoundSource s : all) { s.enabled = true; s.loadFailed = true; }
         Mixer m = new Mixer(all, sr);
         float[] out = new float[1024];
         double peak = 0;
@@ -61,6 +62,7 @@ public final class AudioSmokeTest {
         check("mix audible", peak > 0.05);
 
         SoundSource[] one = { new Sources.Pad() };
+        one[0].loadFailed = true; // no assets on the PC: use the synth path
         one[0].enabled = true;
         one[0].x = 0.8f; one[0].y = 0;
         Mixer mr = new Mixer(one, sr);
@@ -81,9 +83,9 @@ public final class AudioSmokeTest {
         // 4b) Recorded loop path: stereo noise loop placed right → right louder; front → balanced; behind darker.
         SoundSource[] rec = { new Sources.Waves() };
         Noise nz = new Noise(5);
-        float[][] loopData = new float[2][48000];
-        for (int i = 0; i < 48000; i++) { loopData[0][i] = nz.white() * 0.3f; loopData[1][i] = nz.white() * 0.3f; }
-        rec[0].loop = loopData; rec[0].enabled = true;
+        short[] loopData = new short[48000 * 2];
+        for (int i = 0; i < loopData.length; i++) loopData[i] = (short) (nz.white() * 0.3f * 32767);
+        rec[0].loopPcm = loopData; rec[0].loopCh = 2; rec[0].enabled = true;
         double[] lr = loopEnergy(rec, sr, 0.8f, 0f);
         check("loop placed right → right louder", lr[1] > lr[0] * 3);
         double[] fr = loopEnergy(rec, sr, 0f, -0.6f);

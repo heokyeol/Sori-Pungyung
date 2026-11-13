@@ -652,16 +652,16 @@ $("dex").onclick = () => {
   const day = (t) => new Date(t).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
   const sn = (id) => SOUNDS.find((x) => x.id === id).name;
   const L = [`── 지역 소리 (${Object.keys(S.regions).length}/${REGIONS.length}) ──`];
-  for (const g of REGIONS) L.push(`${S.regions[g.id] ? "🔓" : "🔒"} ${g.name} · ${sn(g.sound)}${S.regions[g.id] ? " · " + day(S.regions[g.id].at) : ""}`);
+  for (const g of REGIONS) L.push(`${S.regions[g.id] ? "●" : "○"}  ${g.name} · ${sn(g.sound)}${S.regions[g.id] ? " · " + day(S.regions[g.id].at) : ""}`);
   L.push("", `── 숨은 명소 도장 (${Object.keys(S.stamps).length}/${places ? places.length : 25}) ──`);
   const st = Object.keys(S.stamps).sort();
-  L.push(...(st.length ? st.map((n) => "◉ " + n) : ["아직 찾은 숨은 명소가 없어요."]));
+  L.push(...(st.length ? st.map((n) => "◉  " + n) : ["아직 찾은 숨은 명소가 없어요."]));
   L.push(`공항, 기차, 도서관, 야구장처럼 이름난 곳 ${places ? places.length : 25}곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 열려요.`);
   const now = seasonOf(new Date().getMonth() + 1);
   L.push("", `── 계절 명소 (지금은 ${SEASONS[now]}) ──`);
   for (const sp of SPOTS) {
     const s = SOUNDS.find((x) => x.spot === sp.id), u = S.spots[sp.id];
-    L.push(u ? `🔓 ${s.name} · ${sp.place} · ${day(u.at)}` : `${sp.season === now ? "◆" : "🔒"} ${s.name} · ${SEASONS[sp.season]}에 ${sp.place}에 가면 열려요`);
+    L.push(u ? `●  ${s.name} · ${sp.place} · ${day(u.at)}` : `${sp.season === now ? "◆" : "○"}  ${s.name} · ${SEASONS[sp.season]}에 ${sp.place}에 가면 열려요`);
   }
   modal("소리 도감", L.join("\n") + "\n\n" + (geoOk ? "위치는 이 페이지가 열려 있을 때만 확인해요." : "위치 권한이 없어서 소리가 열리지 않아요. 브라우저에서 위치를 허용해 주세요."));
 };
@@ -687,7 +687,7 @@ function check(lat, lon, force) {
     const s = SOUNDS.find((x) => x.id === g.sound), was = s.locked; s.locked = false;
     const cat = CATS.find((c) => SOUNDS.find((x) => x.unlock === c.id)?.id === g.sound);
     if (cat && !S.unlocked[cat.id]) S.unlocked[cat.id] = { place: g.name, at: Date.now() };
-    toast(was ? `🔓 ${g.name}에서 '${s.name}' 소리가 열렸어요` : `◉ ${g.name} 도장을 찍었어요`); buzz([20, 60, 20]);
+    toast(was ? `${g.name}에서 '${s.name}' 소리가 열렸어요` : `◉ ${g.name} 도장을 찍었어요`); buzz([20, 60, 20]);
   }
   // 2) Hidden landmarks: a stamp each, opening the category sound if needed
   for (const [c, la, lo, name, rad] of places) {
@@ -696,7 +696,7 @@ function check(lat, lon, force) {
     if (dist(lat, lon, la / 1e5, lo / 1e5) > r) continue;
     S.stamps[name] = Date.now(); best["stamp:" + name] = 1;
     const s = SOUNDS.find((x) => x.unlock === c);
-    if (!S.unlocked[c]) { S.unlocked[c] = { place: name, at: Date.now() }; s.locked = false; toast(`🔓 숨은 명소 ${name}에서 '${s.name}' 소리가 열렸어요`); }
+    if (!S.unlocked[c]) { S.unlocked[c] = { place: name, at: Date.now() }; s.locked = false; toast(`숨은 명소 ${name}에서 '${s.name}' 소리가 열렸어요`); }
     else toast(`◉ 숨은 명소 ${name} 도장을 찍었어요`);
     buzz([20, 60, 20]);
   }
@@ -710,7 +710,7 @@ function check(lat, lon, force) {
     const s = SOUNDS.find((x) => x.spot === sp.id);
     if (sp.season === now) {
       S.spots[sp.id] = { place: sp.place, at: Date.now() }; s.locked = false; changed = true;
-      toast(`🔓 ${sp.place}에서 '${s.name}' 소리가 열렸어요`); buzz([20, 60, 20]);
+      toast(`${sp.place}에서 '${s.name}' 소리가 열렸어요`); buzz([20, 60, 20]);
     } else if (S.spotNote[sp.id] !== today) {
       S.spotNote[sp.id] = today; save();
       toast(`${sp.place}${topic(sp.place)} ${SEASONS[sp.season]}에 다시 오면 '${s.name}' 소리가 열려요`);
@@ -755,20 +755,22 @@ function drawPlaces() {
   const me = here || FALLBACK, r = rc.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   rc.width = r.width * dpr; rc.height = r.height * dpr; rg.setTransform(dpr, 0, 0, dpr, 0, 0);
   const cx = r.width / 2, cy = r.height / 2, rad = Math.min(r.width, r.height) / 2 - 30;
-  rg.fillStyle = "#0b0f17"; rg.fillRect(0, 0, r.width, r.height);
+  rg.fillStyle = "#0b0b0b"; rg.fillRect(0, 0, r.width, r.height);
   rg.strokeStyle = "rgba(255,255,255,.2)"; rg.fillStyle = "rgba(255,255,255,.6)"; rg.font = "12px sans-serif"; rg.textAlign = "center";
   for (const m of [1000, 10000, 100000, RANGE]) { const rr = radarScale(m) * rad; rg.beginPath(); rg.arc(cx, cy, rr, 0, 7); rg.stroke(); rg.fillText(m / 1000 + "km", cx + rr * 0.71 + 16, cy - rr * 0.71); }
   rg.font = "15px sans-serif"; rg.fillText("N", cx, cy - rad - 10);
   radarPts = [];
   const list = nearPlaces(me);
   for (const p of list.slice().reverse()) {
-    const cat = { color: SOUNDS.find((x) => x.id === p.g.sound).color, emoji: p.g.emoji }, rr = radarScale(p.d) * rad, a = (p.b * Math.PI) / 180;
+    const rr = radarScale(p.d) * rad, a = (p.b * Math.PI) / 180;
     const x = cx + Math.sin(a) * rr, y = cy - Math.cos(a) * rr;
-    rg.globalAlpha = 0.25; rg.fillStyle = cat.color; rg.beginPath(); rg.arc(x, y, 16, 0, 7); rg.fill();
-    rg.globalAlpha = 1; rg.font = "17px sans-serif"; rg.fillText(cat.emoji, x, y + 6);
+    rg.globalAlpha = 1; rg.fillStyle = "#0b0b0b"; rg.beginPath(); rg.arc(x, y, 18, 0, 7); rg.fill();
+    rg.strokeStyle = INK; rg.globalAlpha = 0.85; rg.lineWidth = 1.4; rg.beginPath(); rg.arc(x, y, 18, 0, 7); rg.stroke();
+    drawIcon(rg, p.g.sound, x, y, 15, 0.85);
+    rg.globalAlpha = 1; rg.fillStyle = MUTED; rg.font = "12px sans-serif"; rg.fillText(p.name, x, y + 33);
     radarPts.push({ x, y, p });
   }
-  rg.fillStyle = "#3D7BFF"; rg.beginPath(); rg.arc(cx, cy, 8, 0, 7); rg.fill();
+  rg.fillStyle = INK; rg.beginPath(); rg.arc(cx, cy, 8, 0, 7); rg.fill();
   if (!here) { rg.fillStyle = "rgba(255,255,255,.6)"; rg.fillText("위치를 못 받아서 서울시청 기준이에요", cx, cy + rad * 0.55); }
   if ($("placeInfo").dataset.tapped !== "1") {
     const ns = nearestSpot(me), now = SEASONS[seasonOf(new Date().getMonth() + 1)];
@@ -785,7 +787,7 @@ function info(p) {
   const dd = p.d >= 1000 ? (p.d / 1000).toFixed(1) + "km" : Math.round(p.d) + "m";
   const dir = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(p.b / 45) % 8];
   $("placeInfo").dataset.tapped = "1";
-  $("placeInfo").textContent = `${cat.emoji} ${p.name} · ${dir}쪽 ${dd}\n` + (S.regions[g.id] ? `이미 열린 소리: ${s.name}` : `가면 열리는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
+  $("placeInfo").textContent = `${p.name} · ${dir}쪽 ${dd}\n` + (S.regions[g.id] ? `이미 열린 소리: ${s.name}` : `가면 열리는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
 }
 rc.addEventListener("pointerup", (e) => {
   const r = rc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
@@ -819,13 +821,13 @@ async function openMap() {
   const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"; document.head.append(css);
   try { await loadScript("https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"); } catch (e) { $("placeInfo").textContent = "지도를 불러오지 못했어요. 인터넷 연결을 확인해 주세요."; return; }
   const me = here || FALLBACK;
-  mapObj = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/liberty", center: [me.lon, me.lat], zoom: 7, dragRotate: false });
+  mapObj = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/dark", center: [me.lon, me.lat], zoom: 7, dragRotate: false });
   mapObj.on("load", () => {
     mapObj.addSource("places", { type: "geojson", data: geojson() });
     mapObj.addSource("me", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-    mapObj.addLayer({ id: "dots", type: "circle", source: "places", paint: { "circle-color": ["get", "c"], "circle-radius": 6, "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
-    mapObj.addLayer({ id: "labels", type: "symbol", source: "places", minzoom: 6, layout: { "text-field": ["get", "n"], "text-size": 13, "text-offset": [0, 1.3], "text-optional": true }, paint: { "text-color": "#000", "text-halo-color": "#fff", "text-halo-width": 1.5 } });
-    mapObj.addLayer({ id: "me", type: "circle", source: "me", paint: { "circle-color": "#3D7BFF", "circle-radius": 8, "circle-stroke-color": "#fff", "circle-stroke-width": 2.5 } });
+    mapObj.addLayer({ id: "dots", type: "circle", source: "places", paint: { "circle-color": "#000", "circle-radius": 7, "circle-stroke-color": "#ededed", "circle-stroke-width": 1.5 } });
+    mapObj.addLayer({ id: "labels", type: "symbol", source: "places", minzoom: 6, layout: { "text-field": ["get", "n"], "text-font": ["Noto Sans Regular"], "text-size": 13, "text-offset": [0, 1.3], "text-optional": true }, paint: { "text-color": "#ededed", "text-halo-color": "#000", "text-halo-width": 1.5 } });
+    mapObj.addLayer({ id: "me", type: "circle", source: "me", paint: { "circle-color": "#ededed", "circle-radius": 8, "circle-stroke-color": "#000", "circle-stroke-width": 2.5 } });
     updateMap();
     mapObj.on("click", "dots", (e) => {
       const f = e.features[0], [lo, la] = f.geometry.coordinates, m = here || FALLBACK;

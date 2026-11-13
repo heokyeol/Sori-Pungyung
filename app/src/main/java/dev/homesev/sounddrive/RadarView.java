@@ -38,13 +38,13 @@ final class RadarView extends View {
     RadarView(Context ctx, Listener listener) {
         super(ctx);
         this.listener = listener;
-        dp = ctx.getResources().getDisplayMetrics().density;
+        dp = ctx.getResources().getDisplayMetrics().density * Widgets.scale; // car screens are low density
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(1.5f * dp);
         ring.setColor(0x33FFFFFF);
         text.setColor(0x99FFFFFF);
         text.setTextAlign(Paint.Align.CENTER);
-        me.setColor(0xFF3D7BFF);
+        me.setColor(Widgets.INK);
     }
 
     void setPlaces(List<Unlocks.Place> p, boolean hasFix) {
@@ -56,7 +56,7 @@ final class RadarView extends View {
     @Override protected void onSizeChanged(int w, int h, int ow, int oh) {
         cx = w / 2f; cy = h / 2f;
         radius = Math.min(w, h) / 2f - 36 * dp;
-        bg.setShader(new RadialGradient(cx, cy, Math.max(w, h) * 0.7f, 0xFF1B2333, 0xFF0B0F17, Shader.TileMode.CLAMP));
+        bg.setShader(new RadialGradient(cx, cy, Math.max(w, h) * 0.7f, 0xFF161616, Widgets.BG, Shader.TileMode.CLAMP));
     }
 
     private float[] screen(Unlocks.Place p) {
@@ -81,20 +81,22 @@ final class RadarView extends View {
             text.setTextSize(18 * dp);
             c.drawText("위치를 찾는 중이에요…", cx, cy + radius * 0.5f, text);
         }
-        // Farther places first so nearer ones draw on top.
+        // Farther places first so nearer ones draw on top: a line-art disc and the region name.
         for (int i = places.size() - 1; i >= 0; i--) {
             Unlocks.Place p = places.get(i);
             float[] s = screen(p);
-            dot.setColor(p.category.color);
-            dot.setAlpha(60);
-            c.drawCircle(s[0], s[1], 18 * dp, dot);
-            dot.setAlpha(255);
-            c.drawCircle(s[0], s[1], 4 * dp, dot);
-            text.setTextSize(18 * dp);
-            text.setColor(Color.WHITE);
-            c.drawText(p.category.emoji, s[0], s[1] - 8 * dp, text);
-            text.setColor(0x99FFFFFF);
+            float rr = 18 * dp;
+            dot.setColor(Widgets.BG);
+            c.drawCircle(s[0], s[1], rr, dot);
+            ring.setColor(Widgets.INK);
+            ring.setAlpha(220);
+            c.drawCircle(s[0], s[1], rr, ring);
+            LineArt.draw(c, p.category.sound, s[0], s[1], rr * 0.85f, 220, dp);
+            text.setTextSize(13 * dp);
+            text.setColor(Widgets.MUTED);
+            c.drawText(p.name, s[0], s[1] + rr + 16 * dp, text);
         }
+        ring.setColor(0x33FFFFFF);
         c.drawCircle(cx, cy, 9 * dp, me);
         me.setAlpha(70);
         c.drawCircle(cx, cy, 18 * dp, me);

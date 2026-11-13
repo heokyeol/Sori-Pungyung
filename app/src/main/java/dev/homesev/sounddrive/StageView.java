@@ -56,7 +56,7 @@ final class StageView extends View {
         this.listener = listener;
         this.isCar = isCar;
         dp = ctx.getResources().getDisplayMetrics().density;
-        k = isCar ? 1f : 0.75f;
+        k = isCar ? 1.5f : 0.75f; // car head units are low density
         line.setStyle(Paint.Style.STROKE);
         line.setColor(Widgets.INK);
         line.setStrokeCap(Paint.Cap.ROUND);
@@ -98,20 +98,20 @@ final class StageView extends View {
         float dt = lastFrame == 0 ? 0.016f : Math.min(0.05f, (now - lastFrame) / 1000f);
         lastFrame = now;
         boolean busy = animateAlways || playing;
-        if (playing) wavePhase = (wavePhase + dt * 9 * dp) % (16 * dp);
+        if (playing) wavePhase = (wavePhase + dt * 9 * dp * k) % (16 * dp * k);
 
         c.drawColor(Widgets.BG);
         c.drawCircle(cx, cy, radius * 0.9f, glow);
 
         // Ripple fields from every sound that is on (the interference pattern)
-        float spacing = 16 * dp;
+        float spacing = 16 * dp * k;
         for (SoundSource s : sources) {
             if (s.locked) continue;
             float[] st = state(s);
             if (st[0] < 0.02f) continue;
             float px = cx + s.x * radius, py = cy + s.y * radius, maxR = radius * 1.25f;
             line.setStrokeWidth(0.8f * dp);
-            for (float rr = 22 * dp + wavePhase; rr < maxR; rr += spacing) {
+            for (float rr = 22 * dp * k + wavePhase; rr < maxR; rr += spacing) {
                 float a = (1 - rr / maxR);
                 line.setAlpha((int) (66 * a * a * st[0] * (0.5f + 0.5f * s.volume)));
                 c.drawCircle(px, py, rr, line);
@@ -125,19 +125,19 @@ final class StageView extends View {
         for (int d = 0; d < 360; d += 5) {
             double a = Math.toRadians(d - 90);
             boolean cardinal = d % 90 == 0, mid = d % 15 == 0;
-            float in = radius - (cardinal ? 0 : mid ? 9 * dp : 5 * dp), out = radius + (cardinal ? 18 * dp : mid ? 0 : 0);
+            float in = radius - (cardinal ? 0 : mid ? 9 * dp * k : 5 * dp * k), out = radius + (cardinal ? 18 * dp * k : 0);
             line.setAlpha(cardinal ? 200 : mid ? 120 : 60);
             c.drawLine(cx + (float) Math.cos(a) * in, cy + (float) Math.sin(a) * in, cx + (float) Math.cos(a) * out, cy + (float) Math.sin(a) * out, line);
         }
         text.setTypeface(Typeface.DEFAULT);
         text.setTextSize(15 * dp * k);
         text.setColor(Widgets.MUTED);
-        c.drawText("앞", cx, cy - radius - 28 * dp, text);
-        c.drawText("뒤", cx, cy + radius + 40 * dp, text);
+        c.drawText("앞", cx, cy - radius - 28 * dp * k, text);
+        c.drawText("뒤", cx, cy + radius + 40 * dp * k, text);
         text.setTextAlign(Paint.Align.RIGHT);
-        c.drawText("왼쪽", cx - radius - 26 * dp, cy + 5 * dp, text);
+        c.drawText("왼쪽", cx - radius - 26 * dp * k, cy + 5 * dp * k, text);
         text.setTextAlign(Paint.Align.LEFT);
-        c.drawText("오른쪽", cx + radius + 26 * dp, cy + 5 * dp, text);
+        c.drawText("오른쪽", cx + radius + 26 * dp * k, cy + 5 * dp * k, text);
         text.setTextAlign(Paint.Align.CENTER);
 
         // Water-drop ripples from touches
@@ -179,7 +179,7 @@ final class StageView extends View {
         c.drawRoundRect(new RectF(cx - cw / 2, cy - ch / 2, cx + cw / 2, cy + ch / 2), cw * 0.5f, cw * 0.5f, line);
         c.drawArc(new RectF(cx - cw * 0.32f, cy + ch * 0.12f, cx + cw * 0.32f, cy + ch * 0.3f), 20, 140, false, line);
         fill.setColor(Widgets.INK);
-        c.drawCircle(cx, cy, 2.6f * dp, fill);
+        c.drawCircle(cx, cy, 2.6f * dp * k, fill);
 
         // Sounds: small dots when off, line-art discs when on
         for (SoundSource s : sources) {
@@ -193,10 +193,10 @@ final class StageView extends View {
             float on = st[0];
             if (on < 0.5f) {
                 fill.setColor(Widgets.BG);
-                c.drawCircle(px, py, 6 * dp, fill);
+                c.drawCircle(px, py, 6 * dp * k, fill);
                 line.setStrokeWidth(1.2f * dp);
                 line.setAlpha(150);
-                c.drawCircle(px, py, 6 * dp * pop, line);
+                c.drawCircle(px, py, 6 * dp * k * pop, line);
                 text.setTypeface(Typeface.DEFAULT);
                 text.setTextSize(13 * dp * k);
                 text.setColor(Widgets.MUTED);
@@ -211,7 +211,7 @@ final class StageView extends View {
                 if (s == selected) {
                     line.setStrokeWidth(1f * dp);
                     line.setAlpha(150);
-                    c.drawCircle(px, py, r + 7 * dp, line);
+                    c.drawCircle(px, py, r + 7 * dp * k, line);
                 }
                 LineArt.draw(c, s.id, px, py, r * 0.86f, 235, dp);
                 text.setTypeface(Typeface.DEFAULT_BOLD);
@@ -226,7 +226,7 @@ final class StageView extends View {
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(15 * dp * k);
             text.setColor(Widgets.MUTED);
-            c.drawText("주행 중에는 위치 이동이 잠겨요", cx, getHeight() - 16 * dp, text);
+            c.drawText("주행 중에는 위치 이동이 잠겨요", cx, getHeight() - 16 * dp * k, text);
         }
         if (busy) postInvalidateOnAnimation(); else lastFrame = 0;
     }
@@ -300,7 +300,7 @@ final class StageView extends View {
 
     private SoundSource nearest(float x, float y) {
         SoundSource best = null;
-        double bestD = 52 * dp;
+        double bestD = 52 * dp * k;
         for (SoundSource s : sources) {
             if (s.locked) continue;
             double d = Math.hypot(cx + s.x * radius - x, cy + s.y * radius - y);

@@ -37,7 +37,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private Widgets.TickSlider selSlider, masterSlider;
     private final java.util.List<Widgets.SoundTile> tiles = new java.util.ArrayList<>();
     private final java.util.List<TextView[]> tabs = new java.util.ArrayList<>(); // {label, underline-holder}
-    private final java.util.List<View> tabLines = new java.util.ArrayList<>();
+    private final java.util.List<Widgets.Underline> tabUnders = new java.util.ArrayList<>();
     private LinearLayout moreSheet;
     private SoundSource selected;
     static final String[][] PRESETS = {{"빗속 드라이브", "rain,wind,pad"}, {"바닷가", "waves,birds,wind"}, {"캠핑", "fire,birds,pad"}};
@@ -71,7 +71,9 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         dp = getResources().getDisplayMetrics().density;
-        k = isCar() ? 1f : 0.72f;
+        // Car head units run at low density (≈160 dpi on a 2560 px screen): scale the whole UI up there.
+        k = isCar() ? 1.5f : 0.72f;
+        Widgets.scale = isCar() ? 1.5f : 1f;
         player = Player.get(this);
         sources = player.sources;
         buildUi();
@@ -104,7 +106,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     /** New sound unlocked: rebuild so it appears; builds decide how loudly to announce it. */
     @Override public void onUnlocked(String soundName, String placeName) {
         buildUi();
-        announceUnlock("🔓 " + placeName + " 근처에서 '" + soundName + "' 소리가 열렸어요");
+        announceUnlock(placeName + " 근처에서 '" + soundName + "' 소리가 열렸어요");
     }
 
     /** The car build blocks the map while driving. */
@@ -138,7 +140,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     // ── UI ──────────────────────────────────────────────────────────────────
     protected void buildUi() {
         boolean portrait = getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
-        tiles.clear(); tabs.clear(); tabLines.clear();
+        tiles.clear(); tabs.clear(); tabUnders.clear();
         if (selected == null || selected.locked) selected = firstOn();
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(portrait ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
@@ -153,28 +155,31 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         left.addView(stage, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.VERTICAL);
-        head.setPadding(px(28), px(22), px(28), 0);
+        head.setPadding(px(28 * k), px(22 * k), px(28 * k), 0);
         LinearLayout brand = new LinearLayout(this);
         brand.setGravity(Gravity.CENTER_VERTICAL);
         TextView pleos = label("Pleos", 22, Widgets.INK);
+        pleos.setSingleLine(true);
         pleos.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         brand.addView(pleos);
         View bar = new View(this);
         bar.setBackgroundColor(0x55FFFFFF);
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(px(1), px(16));
-        blp.setMargins(px(12), 0, px(12), 0);
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(px(1 * k), px(16 * k));
+        blp.setMargins(px(12 * k), 0, px(12 * k), 0);
         brand.addView(bar, blp);
-        brand.addView(label("사운드드라이브", 16, Widgets.INK));
+        TextView appName = label("사운드드라이브", 16, Widgets.INK);
+        appName.setSingleLine(true);
+        brand.addView(appName);
         head.addView(brand);
         TextView hint = label("소리를 끌어서\n들리는 방향과 거리를 바꿔 보세요", 13, Widgets.MUTED);
-        hint.setLineSpacing(px(4), 1f);
+        hint.setLineSpacing(px(4 * k), 1f);
         LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hlp.topMargin = px(36);
+        hlp.topMargin = px(36 * k);
         head.addView(hint, hlp);
-        left.addView(head, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
+        left.addView(head, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
         content.addView(left, portrait
                 ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-                : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 2.2f));
+                : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.7f));
         View div = new View(this);
         div.setBackgroundColor(0x1FFFFFFF);
         content.addView(div, portrait ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1)
@@ -185,7 +190,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         scroll.setBackgroundColor(Widgets.PANEL);
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(px(36), px(18), px(36), px(28));
+        panel.setPadding(px(36 * k), px(18 * k), px(36 * k), px(28 * k));
         scroll.addView(panel);
         content.addView(scroll, portrait
                 ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.1f)
@@ -200,13 +205,13 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         timeView.setTypeface(Widgets.MONO);
         top.addView(tempView);
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.setMargins(px(24), 0, px(16), 0);
+        tlp.setMargins(px(24 * k), 0, px(16 * k), 0);
         top.addView(timeView, tlp);
         addHeaderActions(top);
         Widgets.IconButton more = new Widgets.IconButton(this, Widgets.IconButton.Kind.MORE);
         more.setOnClickListener(v -> showMore());
-        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(px(40), px(40));
-        mlp.setMarginStart(px(8));
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(px(40 * k), px(40 * k));
+        mlp.setMarginStart(px(8 * k));
         top.addView(more, mlp);
         panel.addView(top);
 
@@ -217,39 +222,45 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         titles.setOrientation(LinearLayout.VERTICAL);
         title = label("", 40, Widgets.INK);
         title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setSingleLine(true);
+        title.setAutoSizeTextTypeUniformWithConfiguration((int) (20 * k), (int) (40 * k), 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         titles.addView(title);
         status = label("", 14, Widgets.MUTED);
         titles.addView(status);
         titleRow.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         play = new Widgets.RoundButton(this);
         play.setOnClickListener(v -> { if (player.wantPlay()) player.stop(); else player.play(); });
-        titleRow.addView(play, new LinearLayout.LayoutParams(px(88), px(88)));
-        panel.addView(titleRow, matchWrap(px(26)));
+        titleRow.addView(play, new LinearLayout.LayoutParams(px(88 * k), px(88 * k)));
+        panel.addView(titleRow, matchWrap(px(26 * k)));
 
         // preset tabs
         LinearLayout tabRow = new LinearLayout(this);
         for (String[] pr : PRESETS) {
-            LinearLayout tab = new LinearLayout(this);
-            tab.setOrientation(LinearLayout.VERTICAL);
+            // A tab is just text; the active one gets a 2 px underline drawn by its background.
             TextView tl = label(pr[0], 17, Widgets.MUTED);
-            tl.setPadding(0, px(10), 0, px(10));
-            tab.addView(tl);
-            View under = new View(this);
-            under.setBackgroundColor(Widgets.INK);
-            tab.addView(under, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(2)));
-            tab.setOnClickListener(v -> applyPreset(pr[1].split(",")));
+            tl.setSingleLine(true);
+            tl.setPadding(0, px(10 * k), 0, px(12 * k));
+            Widgets.Underline under = new Widgets.Underline(px(2 * k));
+            tl.setBackground(under);
+            tl.setOnClickListener(v -> applyPreset(pr[1].split(",")));
             LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            tp.setMarginEnd(px(32));
-            tabRow.addView(tab, tp);
+            tp.setMarginEnd(px(32 * k));
+            tabRow.addView(tl, tp);
             tabs.add(new TextView[] {tl});
-            tabLines.add(under);
+            tabUnders.add(under);
         }
-        panel.addView(tabRow, matchWrap(px(20)));
+        android.widget.HorizontalScrollView tabScroll = new android.widget.HorizontalScrollView(this);
+        tabScroll.setHorizontalScrollBarEnabled(false);
+        tabScroll.addView(tabRow);
+        panel.addView(tabScroll, matchWrap(px(20 * k)));
         panel.addView(hairline());
 
         // sound grid
         android.widget.GridLayout grid = new android.widget.GridLayout(this);
-        int cols = portrait ? 4 : 5;
+        // Columns from the panel's real width: each tile needs ≈ 92 dp (scaled) to keep names readable.
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int panelW = portrait ? screenW : Math.round(screenW / 2.7f);
+        int cols = Math.max(3, Math.min(5, panelW / Math.round(92 * dp * k)));
         grid.setColumnCount(cols);
         for (SoundSource s : sources) {
             if (s.locked) continue;
@@ -261,12 +272,12 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
                     android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED),
                     android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f));
             gp.width = 0;
-            gp.topMargin = px(14);
+            gp.topMargin = px(14 * k);
             grid.addView(tile, gp);
             tiles.add(tile);
         }
-        panel.addView(grid, matchWrap(px(6)));
-        panel.addView(hairline(), matchWrap(px(18)));
+        panel.addView(grid, matchWrap(px(6 * k)));
+        panel.addView(hairline(), matchWrap(px(18 * k)));
 
         // selected sound
         LinearLayout selRow = new LinearLayout(this);
@@ -277,11 +288,11 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         selInfo = label("", 13, Widgets.MUTED);
         selInfo.setTypeface(Widgets.MONO);
         selRow.addView(selInfo);
-        panel.addView(selRow, matchWrap(px(18)));
+        panel.addView(selRow, matchWrap(px(18 * k)));
         selSlider = new Widgets.TickSlider(this);
         selSlider.setOnChange(v -> { if (selected != null) { selected.volume = v; player.save(); refreshLight(); } });
-        panel.addView(selSlider, matchWrap(px(8)));
-        panel.addView(hairline(), matchWrap(px(14)));
+        panel.addView(selSlider, matchWrap(px(8 * k)));
+        panel.addView(hairline(), matchWrap(px(14 * k)));
 
         // bird species
         if (player.birds != null && !player.birds.locked) {
@@ -290,10 +301,10 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             birdRow.addView(label("새 종류", 15, Widgets.MUTED), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             TextView pick = label("고르기", 15, Widgets.INK);
             pick.setPaintFlags(pick.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
-            pick.setPadding(px(12), px(12), 0, px(12));
+            pick.setPadding(px(12 * k), px(12 * k), 0, px(12 * k));
             pick.setOnClickListener(v -> showSpeciesDialog());
             birdRow.addView(pick);
-            panel.addView(birdRow, matchWrap(px(6)));
+            panel.addView(birdRow, matchWrap(px(6 * k)));
         }
 
         // master volume
@@ -302,24 +313,24 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         masterValue = label("", 15, Widgets.INK);
         masterValue.setTypeface(Widgets.MONO);
         mRow.addView(masterValue);
-        panel.addView(mRow, matchWrap(px(14)));
+        panel.addView(mRow, matchWrap(px(14 * k)));
         masterSlider = new Widgets.TickSlider(this);
         masterSlider.setValue(player.engine.mixer.master);
         masterSlider.setOnChange(v -> { player.engine.mixer.master = v; player.save(); masterValue.setText(String.valueOf(Math.round(v * 100))); });
-        panel.addView(masterSlider, matchWrap(px(4)));
-        panel.addView(hairline(), matchWrap(px(14)));
+        panel.addView(masterSlider, matchWrap(px(4 * k)));
+        panel.addView(hairline(), matchWrap(px(14 * k)));
 
         // bottom cells: motion, sleep timer, screen
         LinearLayout cells = new LinearLayout(this);
         motionValue = cell(cells, "움직임", v -> { int m = player.cycleMotion(); stage.setAnimating(m != Mixer.MOTION_NONE); }, false);
         sleepValue = cell(cells, "수면 타이머", v -> player.cycleSleep(), true);
         screenValue = cell(cells, "화면", v -> setDark(true, darkKeepsMoodDefault()), true);
-        panel.addView(cells, matchWrap(px(4)));
+        panel.addView(cells, matchWrap(px(4 * k)));
 
         // "⋯" sheet: build-specific switches and the less frequent actions
         moreSheet = new LinearLayout(this);
         moreSheet.setOrientation(LinearLayout.VERTICAL);
-        moreSheet.setPadding(px(20), px(8), px(20), px(20));
+        moreSheet.setPadding(px(20 * k), px(8 * k), px(20 * k), px(20 * k));
         addExtras(moreSheet);
         addDarkButtons(moreSheet);
         Button places = bigButton("주변 해금 장소 (레이더 · 지도)", Widgets.PANEL);
@@ -327,16 +338,16 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             if (!canOpenPlaces()) { android.widget.Toast.makeText(this, "정차 중에만 볼 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); return; }
             startActivity(new android.content.Intent(this, PlacesActivity.class));
         });
-        moreSheet.addView(places, matchWrap(px(12)));
+        moreSheet.addView(places, matchWrap(px(12 * k)));
         Button dex = bigButton("소리 도감 (" + unlockedCount() + "/" + collectionTotal() + ")", Widgets.PANEL);
         dex.setOnClickListener(v -> showCollection());
-        moreSheet.addView(dex, matchWrap(px(10)));
+        moreSheet.addView(dex, matchWrap(px(10 * k)));
         Button reset = bigButton("위치 처음으로", Widgets.PANEL);
         reset.setOnClickListener(v -> { for (SoundSource x : sources) { x.x = x.homeX; x.y = x.homeY; } stage.invalidate(); player.save(); });
-        moreSheet.addView(reset, matchWrap(px(10)));
+        moreSheet.addView(reset, matchWrap(px(10 * k)));
         Button credits = bigButton("소리 출처", Widgets.PANEL);
         credits.setOnClickListener(v -> showCredits());
-        moreSheet.addView(credits, matchWrap(px(10)));
+        moreSheet.addView(credits, matchWrap(px(10 * k)));
 
         // Dark (sleep) overlay on top of everything.
         FrameLayout root = new FrameLayout(this);
@@ -374,7 +385,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private TextView cell(LinearLayout row, String name, View.OnClickListener click, boolean divider) {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(divider ? px(18) : 0, px(12), px(8), px(12));
+        c.setPadding(divider ? px(18 * k) : 0, px(12 * k), px(8 * k), px(12 * k));
         if (divider) {
             android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
             d.setColor(Widgets.PANEL);
@@ -394,12 +405,52 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
 
     private void showMore() {
         if (moreSheet.getParent() != null) ((ViewGroup) moreSheet.getParent()).removeView(moreSheet);
+        showSheet("더보기", moreSheet);
+    }
+
+    /** Dark panel dialog in the app's line style: title, 닫기, scrolling body. */
+    protected android.app.Dialog showSheet(String titleText, View body) {
+        android.app.Dialog d = new android.app.Dialog(this);
+        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Widgets.PANEL);
+        bg.setCornerRadius(px(16 * k));
+        bg.setStroke(1, 0x33FFFFFF);
+        box.setBackground(bg);
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(px(24 * k), px(18 * k), px(16 * k), px(8 * k));
+        TextView t = label(titleText, 22, Widgets.INK);
+        t.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        head.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView close = label("닫기", 16, Widgets.INK);
+        close.setPaintFlags(close.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+        close.setPadding(px(12 * k), px(10 * k), px(12 * k), px(10 * k));
+        close.setOnClickListener(v -> d.dismiss());
+        head.addView(close);
+        box.addView(head);
         ScrollView sv = new ScrollView(this);
-        sv.addView(moreSheet);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setView(sv)
-                .setPositiveButton("닫기", null)
-                .show();
+        sv.addView(body);
+        box.addView(sv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        d.setContentView(box);
+        android.view.Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            w.setLayout(Math.min(dm.widthPixels - px(40), px(560 * k)), Math.round(dm.heightPixels * 0.8f));
+        }
+        d.show();
+        return d;
+    }
+
+    private TextView sheetText(String text) {
+        TextView tv = label(text, 16, 0xFFCFCFCF);
+        tv.setLineSpacing(px(4 * k), 1f);
+        int p = px(24 * k);
+        tv.setPadding(p, px(4 * k), p, p);
+        return tv;
     }
 
     private SoundSource firstOn() {
@@ -461,12 +512,12 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         b.append("── 지역 소리 (").append(player.regionsVisited().size()).append("/").append(Regions.ALL.length).append(") ──\n\n");
         for (Regions.Region r : Regions.ALL) {
             String info = player.regionInfo(r.id);
-            if (info != null) b.append("🔓 ").append(r.name).append(" · ").append(soundName(r.sound)).append(" · ").append(when(info, fmt)).append("\n");
-            else b.append("🔒 ").append(r.name).append(" · ").append(soundName(r.sound)).append("\n");
+            if (info != null) b.append("●  ").append(r.name).append(" · ").append(soundName(r.sound)).append(" · ").append(when(info, fmt)).append("\n");
+            else b.append("○  ").append(r.name).append(" · ").append(soundName(r.sound)).append("\n");
         }
         b.append("\n── 숨은 명소 도장 (").append(player.stamps().size()).append("/").append(player.unlocks.size()).append(") ──\n\n");
         if (player.stamps().isEmpty()) b.append("아직 찾은 숨은 명소가 없어요.\n");
-        else for (String st : new java.util.TreeSet<>(player.stamps())) b.append("◉ ").append(st).append("\n");
+        else for (String st : new java.util.TreeSet<>(player.stamps())) b.append("◉  ").append(st).append("\n");
         b.append("공항, 기차, 도서관, 야구장처럼 이름난 곳 " + player.unlocks.size() + "곳이 지도에 안 보이게 숨어 있어요. 도서관과 야구장 소리는 숨은 명소에서만 열려요.\n");
         int nowSeason = Seasons.season(java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1);
         b.append("\n── 계절 명소 (지금은 ").append(Seasons.SEASON_NAMES[nowSeason]).append(") ──\n\n");
@@ -474,24 +525,13 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             for (Seasons.Spot sp : Seasons.ALL) {
                 if (sp.season != season) continue;
                 String info = player.spotInfo(sp.id);
-                if (info != null) b.append("🔓 ").append(soundName(sp.sound)).append(" · ").append(sp.place).append(" · ").append(when(info, fmt)).append("\n");
-                else b.append(sp.season == nowSeason ? "◆ " : "🔒 ").append(soundName(sp.sound)).append(" · ").append(sp.hint()).append("\n");
+                if (info != null) b.append("●  ").append(soundName(sp.sound)).append(" · ").append(sp.place).append(" · ").append(when(info, fmt)).append("\n");
+                else b.append(sp.season == nowSeason ? "◆  " : "○  ").append(soundName(sp.sound)).append(" · ").append(sp.hint()).append("\n");
             }
         }
         b.append("\n").append(player.locationPermitted() ? "위치는 앱이 켜져 있거나 재생 중일 때만 확인해요."
                 : "위치 권한이 꺼져 있어서 소리가 열리지 않아요. 설정에서 위치 권한을 켜 주세요.");
-        TextView tv = new TextView(this);
-        tv.setText(b.toString());
-        tv.setTextSize(16 * k);
-        int p = px(18);
-        tv.setPadding(p, p, p, p);
-        ScrollView sv = new ScrollView(this);
-        sv.addView(tv);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("소리 도감")
-                .setView(sv)
-                .setPositiveButton("닫기", null)
-                .show();
+        showSheet("소리 도감", sheetText(b.toString()));
     }
 
     /** Attribution for the recordings (required for the CC BY / CC BY-SA ones). */
@@ -502,39 +542,27 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         } catch (java.io.IOException e) {
             text = "출처 파일을 읽지 못했어요.";
         }
-        TextView tv = new TextView(this);
-        tv.setText(text);
+        TextView tv = sheetText(text);
         tv.setTextSize(13 * k);
         tv.setTextIsSelectable(true);
-        int p = px(16);
-        tv.setPadding(p, p, p, p);
-        ScrollView sv = new ScrollView(this);
-        sv.addView(tv);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("소리 출처")
-                .setView(sv)
-                .setPositiveButton("닫기", null)
-                .show();
+        showSheet("소리 출처", tv);
     }
 
     private void showSpeciesDialog() {
         Birds b = player.birds;
-        String[] items = new String[Birds.ALL.length + 1];
-        boolean[] checked = new boolean[items.length];
-        items[0] = "시간대에 맞춰 자동 (밤엔 밤 새만)";
-        checked[0] = b.autoTime;
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(px(24 * k), 0, px(24 * k), px(20 * k));
+        android.widget.Switch auto = switchRow("시간대에 맞춰 자동 (밤엔 밤 새만)", b.autoTime);
+        auto.setOnCheckedChangeListener((v, on) -> { b.autoTime = on; player.save(); });
+        list.addView(auto, matchWrap(px(8 * k)));
         for (int i = 0; i < Birds.ALL.length; i++) {
-            items[i + 1] = Birds.ALL[i].name + (Birds.ALL[i].night ? " (밤)" : "");
-            checked[i + 1] = b.speciesOn[i];
+            final int idx = i;
+            android.widget.Switch sw = switchRow(Birds.ALL[i].name + (Birds.ALL[i].night ? "  (밤)" : ""), b.speciesOn[i]);
+            sw.setOnCheckedChangeListener((v, on) -> { b.speciesOn[idx] = on; player.save(); });
+            list.addView(sw, matchWrap(px(8 * k)));
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("새 종류")
-                .setMultiChoiceItems(items, checked, (d, which, on) -> {
-                    if (which == 0) b.autoTime = on; else b.speciesOn[which - 1] = on;
-                    player.save();
-                })
-                .setPositiveButton("닫기", null)
-                .show();
+        showSheet("새 종류", list);
     }
 
     /** Switch to exactly these sounds and start playing. */
@@ -581,7 +609,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         for (int i = 0; i < tabs.size(); i++) {
             boolean active = PRESETS[i][0].equals(name);
             tabs.get(i)[0].setTextColor(active ? Widgets.INK : Widgets.MUTED);
-            tabLines.get(i).setVisibility(active ? View.VISIBLE : View.INVISIBLE);
+            tabUnders.get(i).setOn(active);
         }
         refreshLight();
         masterValue.setText(String.valueOf(Math.round(player.engine.mixer.master * 100)));
@@ -668,9 +696,13 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     protected android.widget.Switch switchRow(String text, boolean on) {
         android.widget.Switch sw = new android.widget.Switch(this);
         sw.setText(text);
-        sw.setTextColor(0xFFCFD6E2);
-        sw.setTextSize(19 * k);
+        sw.setTextColor(Widgets.INK);
+        sw.setTextSize(17 * k);
         sw.setChecked(on);
+        sw.setMinHeight(px(52 * k));
+        int[][] states = {{android.R.attr.state_checked}, {}};
+        sw.setThumbTintList(new android.content.res.ColorStateList(states, new int[] {Widgets.INK, 0xFF8A8A8A}));
+        sw.setTrackTintList(new android.content.res.ColorStateList(states, new int[] {0x88FFFFFF, 0x33FFFFFF}));
         return sw;
     }
 

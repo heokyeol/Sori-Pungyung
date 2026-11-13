@@ -11,11 +11,27 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 
-/** Decodes a compressed audio asset (OGG/MP3/AAC) into float[channel][sample]. */
+/** Decodes a compressed audio asset (OGG/MP3/AAC) into interleaved 16-bit PCM. */
 final class AssetLoop {
     private AssetLoop() {}
 
-    static float[][] decode(Context ctx, String name) {
+    /** Interleaved 16-bit samples and their channel count. */
+    static final class Pcm {
+        final short[] data;
+        final int ch;
+        Pcm(short[] data, int ch) { this.data = data; this.ch = ch; }
+    }
+
+    /** Mono float copy of the first channel (small bird-call files). */
+    static float[] decodeMonoFloat(Context ctx, String name) {
+        Pcm p = decode(ctx, name);
+        if (p == null) return null;
+        float[] out = new float[p.data.length / p.ch];
+        for (int i = 0; i < out.length; i++) out[i] = p.data[i * p.ch] / 32768f;
+        return out;
+    }
+
+    static Pcm decode(Context ctx, String name) {
         MediaExtractor ex = new MediaExtractor();
         MediaCodec codec = null;
         try (AssetFileDescriptor fd = ctx.getAssets().openFd(name)) {
@@ -55,12 +71,10 @@ final class AssetLoop {
             }
             ShortBuffer sb = ByteBuffer.wrap(pcm.toByteArray()).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
             int frames = sb.remaining() / ch;
-            float[][] outCh = new float[Math.min(ch, 2)][frames];
-            for (int i = 0; i < frames; i++) {
-                for (int c = 0; c < outCh.length; c++) outCh[c][i] = sb.get(i * ch + c) / 32768f;
-            }
+            short[] out = new short[frames * ch];
+            sb.get(out);
             Log.i("SoundDrive", "decoded " + name + ": " + frames + " frames, " + ch + " ch");
-            return frames > 0 ? outCh : null;
+            return frames > 0 ? new Pcm(out, ch) : null;
         } catch (Exception e) {
             Log.w("SoundDrive", "decode " + name, e);
             return null;

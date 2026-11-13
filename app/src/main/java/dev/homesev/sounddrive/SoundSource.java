@@ -17,8 +17,16 @@ abstract class SoundSource {
 
     /** Asset name of a recorded stereo loop (e.g. "waves.ogg"), or null for synth only. */
     String asset;
-    /** Decoded loop [channel][sample] at the mixer rate; when set it replaces the synth. */
-    volatile float[][] loop;
+    /**
+     * Decoded loop, interleaved 16-bit PCM at the mixer rate (half the memory of float).
+     * Loaded only while the sound is on (see Player); while loading the sound is silent.
+     */
+    volatile short[] loopPcm;
+    volatile int loopCh = 2;
+    /** Decoding failed: fall back to the synth so the sound still plays. */
+    volatile boolean loadFailed;
+    /** elapsedRealtime when the sound was last wanted (on and unlocked); used to free memory. */
+    long lastWanted;
     private int loopPos;
     private float lgL = -1, lgR, la = 1, lpL, lpR;
 
@@ -38,8 +46,9 @@ abstract class SoundSource {
      */
     void renderInto(float[] l, float[] r, int n, float sr, float fadeFrom, float fadeTo,
                     Spatial.Target tg, float[] mono) {
-        float[][] rec = loop;
-        if (rec != null) { renderLoop(rec, l, r, n, sr, fadeFrom, fadeTo); return; }
+        short[] rec = loopPcm;
+        if (rec != null) { renderLoop(rec, loopCh, l, r, n, sr, fadeFrom, fadeTo); return; }
+        if (asset != null && !loadFailed) return; // recording still loading: stay silent, no synth blip
         render(mono, n, sr);
         for (int i = 0; i < n; i++) mono[i] *= fadeFrom + (fadeTo - fadeFrom) * i / n;
         Spatial.target(x, y, sr, tg);
@@ -51,9 +60,8 @@ abstract class SoundSource {
      * narrowing it and shifting the balance toward the side the dot is on; farther is
      * quieter, behind is darker (same rules as {@link Spatial}).
      */
-    private void renderLoop(float[][] rec, float[] l, float[] r, int n, float sr, float fadeFrom, float fadeTo) {
-        float[] cl = rec[0], cr = rec.length > 1 ? rec[1] : rec[0];
-        int len = cl.length;
+    private void renderLoop(short[] rec, int ch, float[] l, float[] r, int n, float sr, float fadeFrom, float fadeTo) {
+        int len = rec.length / ch;
         float d = (float) Math.hypot(x, y);
         double az = Math.atan2(x, -y);
         float sn = (float) Math.sin(az), cs = (float) Math.cos(az);
@@ -69,7 +77,8 @@ abstract class SoundSource {
         float dgl = (gl - lgL) / n, dgr = (gr - lgR) / n, da = (a - la) / n;
         if (loopPos >= len) loopPos = 0;
         for (int i = 0; i < n; i++) {
-            float L = cl[loopPos], R = cr[loopPos];
+            int at = loopPos * ch;
+            float L = rec[at] / 32768f, R = ch > 1 ? rec[at + 1] / 32768f : L;
             if (++loopPos >= len) loopPos = 0;
             float mid = (L + R) * 0.5f, side = (L - R) * 0.5f * width;
             float f = fadeFrom + (fadeTo - fadeFrom) * i / n;

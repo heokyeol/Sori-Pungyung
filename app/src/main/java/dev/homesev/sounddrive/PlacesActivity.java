@@ -40,7 +40,7 @@ import java.util.Set;
  * Place pins come from the app's own offline list, not from a map API.
  */
 public final class PlacesActivity extends Activity implements Player.Listener, RadarView.Listener {
-    private static final String MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+    private static final String MAP_STYLE = "https://tiles.openfreemap.org/styles/dark";
     private static final double[] FALLBACK = {37.5665, 126.9780}; // Seoul City Hall until a fix arrives
 
     private Player player;
@@ -67,7 +67,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(0xFF0B0F17);
+        root.setBackgroundColor(Widgets.BG);
 
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
@@ -83,7 +83,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         filterBtn = button("");
         filterBtn.setOnClickListener(v -> { showAll = !showAll; refreshData(); });
         for (Button x : new Button[] {back, radarBtn, mapBtn, filterBtn}) {
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(52), 1f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(52 * Widgets.scale), 1f);
             lp.setMarginEnd(px(6));
             bar.addView(x, lp);
         }
@@ -99,18 +99,18 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         info = new TextView(this);
-        info.setTextColor(0xFFCFD6E2);
-        info.setTextSize(16);
+        info.setTextColor(0xFFCFCFCF);
+        info.setTextSize(16 * Widgets.scale);
         info.setPadding(px(16), px(12), px(16), px(16));
         root.addView(info);
 
         // "Guide me there" — car build only (built-in navigation via the Pleos SDK)
-        guideBtn = button("🧭 여기로 안내");
-        guideBtn.setTextSize(17);
+        guideBtn = button("여기로 안내");
+        guideBtn.setTextSize(17 * Widgets.scale);
         style(guideBtn, true);
         guideBtn.setVisibility(View.GONE);
         guideBtn.setOnClickListener(v -> guide());
-        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(56));
+        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(56 * Widgets.scale));
         glp.setMargins(px(16), 0, px(16), px(16));
         root.addView(guideBtn, glp);
         if (Navigator.available()) navigator = new Navigator(this);
@@ -124,23 +124,24 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                 s.addSource(new GeoJsonSource("places"));
                 s.addSource(new GeoJsonSource("me"));
                 CircleLayer pins = new CircleLayer("places-dots", "places").withProperties(
-                        PropertyFactory.circleColor(Expression.get("c")),
-                        PropertyFactory.circleRadius(6f),
+                        PropertyFactory.circleColor(Color.BLACK),
+                        PropertyFactory.circleRadius(7f * Widgets.scale),
                         PropertyFactory.circleStrokeColor(Color.WHITE),
                         PropertyFactory.circleStrokeWidth(1.5f));
                 s.addLayer(pins);
                 SymbolLayer labels = new SymbolLayer("places-labels", "places").withProperties(
                         PropertyFactory.textField(Expression.get("n")),
-                        PropertyFactory.textSize(12f),
+                        PropertyFactory.textFont(new String[] {"Noto Sans Regular"}), // a font the OpenFreeMap styles serve
+                        PropertyFactory.textSize(13f * Widgets.scale),
                         PropertyFactory.textOffset(new Float[] {0f, 1.3f}),
-                        PropertyFactory.textColor(Color.BLACK),
-                        PropertyFactory.textHaloColor(Color.WHITE),
+                        PropertyFactory.textColor(0xFFEDEDED),
+                        PropertyFactory.textHaloColor(Color.BLACK),
                         PropertyFactory.textHaloWidth(1.5f),
                         PropertyFactory.textOptional(true));
                 labels.setMinZoom(6f); // regions are few, label them early
                 s.addLayer(labels);
                 s.addLayer(new CircleLayer("me-dot", "me").withProperties(
-                        PropertyFactory.circleColor(0xFF3D7BFF),
+                        PropertyFactory.circleColor(Color.WHITE),
                         PropertyFactory.circleRadius(8f),
                         PropertyFactory.circleStrokeColor(Color.WHITE),
                         PropertyFactory.circleStrokeWidth(2.5f)));
@@ -294,7 +295,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         String name = selName;
         navigator.go(selLat, selLon, name, err -> runOnUiThread(() -> {
             if (err != null) Toast.makeText(this, err, Toast.LENGTH_LONG).show();
-            else Toast.makeText(this, "🧭 " + name + "(으)로 안내를 시작해요", Toast.LENGTH_SHORT).show();
+            else Toast.makeText(this, name + "(으)로 안내를 시작해요", Toast.LENGTH_SHORT).show();
         }));
     }
 
@@ -306,7 +307,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         boolean open = player.regionInfo(c.id) != null;
         String dist = d >= 1000 ? String.format(Locale.KOREA, "%.1fkm", d / 1000) : String.format(Locale.KOREA, "%.0fm", d);
         info.setTag("tapped");
-        info.setText(c.emoji + " " + name + " · " + Unlocks.direction(bearing) + "쪽 " + dist
+        info.setText(name + " · " + Unlocks.direction(bearing) + "쪽 " + dist
                 + "\n" + (open ? "이미 열린 소리: " + sound : "가면 열리는 소리: " + sound
                 + (radiusM >= 1000 ? String.format(Locale.KOREA, " (%.0fkm 안으로)", radiusM / 1000) : String.format(Locale.KOREA, " (%.0fm 안으로)", radiusM))));
     }
@@ -333,7 +334,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
     @Override public void onUnlocked(String soundName, String placeName) {
         info.setTag(null);
         refreshData();
-        Toast.makeText(this, "🔓 " + placeName + "에서 '" + soundName + "' 소리가 열렸어요", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, placeName + "에서 '" + soundName + "' 소리가 열렸어요", Toast.LENGTH_LONG).show();
     }
 
     // ── Lifecycle (MapView needs every call) ───────────────────────────────
@@ -352,7 +353,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         Button b = new Button(this);
         b.setText(t);
         b.setAllCaps(false);
-        b.setTextSize(15);
+        b.setTextSize(15 * Widgets.scale);
         b.setTextColor(Color.WHITE);
         style(b, false);
         return b;
@@ -361,7 +362,8 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
     private void style(Button b, boolean active) {
         GradientDrawable d = new GradientDrawable();
         d.setCornerRadius(px(12));
-        d.setColor(active ? 0xFF3D7BFF : 0xFF2A3446);
+        d.setColor(active ? 0xFF1C1C1C : Widgets.PANEL);
+        d.setStroke(1, active ? Widgets.INK : 0x44FFFFFF);
         b.setBackground(d);
     }
 
