@@ -12,6 +12,7 @@ import soundfile as sf
 
 BUILD, ASSETS = sys.argv[1], sys.argv[2]
 FORCE = "--force" in sys.argv[3:]
+FORCE_CALLS = FORCE or "--force=calls" in sys.argv[3:]  # rebuild only the bird call clips
 
 # Keep the "Edited:" note of sounds we don't rebuild, read from the existing credits file.
 OLD_EDIT = {}
@@ -29,10 +30,12 @@ LOOP_RMS = {"rain": 0.16, "wind": 0.14, "fire": 0.13, "pad": 0.12, "thunder": 0.
 UNLOCK_RMS = 0.13
 # high-pass cutoff (Hz) and max gap merged inside one call (s)
 # (high-pass Hz, merge gap s, threshold × noise floor, low-pass Hz or None)
-CALL_CFG = {"dove": (150, 0.7, 4, None), "owl": (120, 0.9, 4, None), "scops": (400, 0.6, 4, None),
-            "cuckoo": (250, 0.5, 4, None), "woodpecker": (300, 0.25, 4, None),
-            "nightjar": (700, 0.5, 3, 2500)}  # quiet recording: detect in its call band
-DEFAULT_CALL = (1000, 0.3, 4, None)
+# Gaps are long enough to keep a whole phrase together (소쩍-소쩍, 뻐-꾹, 구구-구구).
+CALL_CFG = {"dove": (150, 1.0, 4, None), "owl": (120, 1.5, 4, None), "scops": (400, 2.5, 4, None),
+            "cuckoo": (250, 1.2, 4, None), "woodpecker": (300, 0.4, 4, None), "warbler": (800, 0.7, 4, None),
+            "bulbul": (800, 0.6, 4, None), "oriole": (800, 0.6, 4, None),
+            "nightjar": (700, 0.7, 3, 2500)}  # quiet recording: detect in its call band
+DEFAULT_CALL = (1000, 0.4, 4, None)
 
 
 def load(path):
@@ -139,17 +142,20 @@ def find_calls(x, fc, gap, k=4, lp=None):
             j = k; break
         segs.append((i, j)); i = j + 1
     out = []
+    release = floor * 1.6  # end a call only once it has really died away (no clipped tails)
     for a, b in segs:
+        while b < n - 1 and env[b] > release: b += 1
+        while a > 0 and env[a] > release: a -= 1
         d = (b - a) / SR
-        if d < 0.12: continue
-        if d > 8: b = a + 8 * SR
+        if d < 0.15: continue
+        if d > 10: b = a + 10 * SR
         snr = env[a:b].max() / (floor + 1e-12)
         out.append((snr, a, b))
     return y, sorted(out, reverse=True)
 
 
 def make_calls(target, items):
-    if not FORCE and os.path.exists(f"{ASSETS}/birds_{target}.ogg"):
+    if not FORCE_CALLS and os.path.exists(f"{ASSETS}/birds_{target}.ogg"):
         old = [l for l in open(f"{ASSETS}/birds_index.txt") if l.split()[:1] == [target]] if os.path.exists(f"{ASSETS}/birds_index.txt") else []
         if old:
             for o in items: o["excerpt"] = OLD_EDIT.get(target, "call clips cut out, high-passed, mono, 48 kHz")
@@ -164,11 +170,11 @@ def make_calls(target, items):
         y, found = find_calls(x, fc, gap, k, lp)
         take = found[: (8 if len(items) == 1 else 4)]
         for snr, a, b in sorted(take, key=lambda t: t[1]):
-            pad = int(0.12 * SR)
-            a, b = max(0, a - pad), min(len(y), b + pad)
+            a, b = max(0, a - int(0.1 * SR)), min(len(y), b + int(0.25 * SR))
             c = y[a:b].copy()
-            f = int(0.03 * SR)
-            c[:f] *= np.linspace(0, 1, f); c[-f:] *= np.linspace(1, 0, f)
+            fi, fo = int(0.05 * SR), min(int(0.25 * SR), len(c) // 3)
+            c[:fi] *= np.sin(np.linspace(0, np.pi / 2, fi)) ** 2       # gentle start
+            c[-fo:] *= np.cos(np.linspace(0, np.pi / 2, fo)) ** 2      # long, smooth tail
             c *= 0.6 / (np.abs(c).max() + 1e-9)
             clips.append(c)
     if not clips:
