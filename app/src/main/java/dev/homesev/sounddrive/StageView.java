@@ -30,6 +30,38 @@ final class StageView extends View {
     interface Listener {
         void onStageChanged();
         default void onSelected(SoundSource s) {}
+        default void onBirdEdit(boolean on) {}
+    }
+
+    // Bird perches: each species sings from its own spot around the "새" dot.
+    // The edit mode (long-press the 새 dot) shows them: drag to move, tap to switch on/off.
+    private Birds birds;
+    private boolean birdEdit;
+    private int draggingPerch = -1;
+    private boolean longPressed;
+    private final Runnable longPress = () -> {
+        if (StageView.this.dragging instanceof Birds && !StageView.this.moved && !StageView.this.locked) {
+            longPressed = true;
+            setBirdEdit(true);
+            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        }
+    };
+
+    void setBirdEdit(boolean on) {
+        if (birds == null || birds.locked) on = false;
+        birdEdit = on;
+        if (on && birds != null && !birds.enabled) { birds.enabled = true; state(birds)[1] = 1f; listener.onStageChanged(); }
+        listener.onBirdEdit(on);
+        invalidate();
+    }
+
+    boolean birdEdit() { return birdEdit; }
+
+    private float[] perchPos(int i) {
+        float px = birds.x + birds.perchX[i], py = birds.y + birds.perchY[i];
+        float len = (float) Math.hypot(px, py);
+        if (len > 1f) { px /= len; py /= len; }
+        return new float[] {cx + px * radius, cy + py * radius};
     }
 
     private final SoundSource[] sources;
@@ -66,6 +98,7 @@ final class StageView extends View {
         mono.setTextAlign(Paint.Align.CENTER);
         mono.setColor(Widgets.MUTED);
         setHapticFeedbackEnabled(true);
+        for (SoundSource s : sources) if (s instanceof Birds) birds = (Birds) s;
     }
 
     void setLocked(boolean locked) { this.locked = locked; invalidate(); }
@@ -214,12 +247,48 @@ final class StageView extends View {
                     c.drawCircle(px, py, r + 7 * dp * k, line);
                 }
                 LineArt.draw(c, s.id, px, py, r * 0.86f, 235, dp);
+                if (birdEdit && s == birds) continue; // perches sit around the dot in edit mode; skip its label
                 text.setTypeface(Typeface.DEFAULT_BOLD);
                 text.setTextSize(17 * dp * k);
                 text.setColor(Widgets.INK);
                 c.drawText(s.name, px, py + r + 24 * dp * k, text);
                 mono.setTextSize(12 * dp * k);
                 c.drawText(side(s.x, s.y) + "  /  " + Math.round(s.volume * 100), px, py + r + 44 * dp * k, mono);
+            }
+        }
+        // Bird names pop up at their perch when they call (fade over 2.5 s)
+        if (birds != null && !birds.locked && birds.enabled) {
+            long nowMs = System.nanoTime() / 1_000_000;
+            text.setTypeface(Typeface.DEFAULT);
+            text.setTextSize(12 * dp * k);
+            for (int i = 0; i < Birds.ALL.length; i++) {
+                float age = (nowMs - birds.calledAt[i]) / 2500f;
+                boolean show = birdEdit || (age >= 0 && age < 1 && birds.calledAt[i] > 0);
+                if (!show) continue;
+                float[] pp = perchPos(i);
+                float a = birdEdit ? 1f : (age < 0.15f ? age / 0.15f : 1 - (age - 0.15f) / 0.85f);
+                boolean on = birds.speciesOn[i];
+                float rr = (birdEdit ? 9 : 5) * dp * k;
+                fill.setColor(birdEdit && on ? Widgets.INK : Widgets.BG);
+                fill.setAlpha((int) (255 * a));
+                c.drawCircle(pp[0], pp[1], rr, fill);
+                line.setStrokeWidth(1.2f * dp);
+                line.setAlpha((int) ((on ? 220 : 90) * a));
+                c.drawCircle(pp[0], pp[1], rr, line);
+                if (!birdEdit) { // a small ripple while it sings
+                    line.setAlpha((int) (90 * a));
+                    c.drawCircle(pp[0], pp[1], rr + age * 26 * dp * k, line);
+                }
+                text.setColor(on ? Widgets.INK : Widgets.MUTED);
+                text.setAlpha((int) (255 * a));
+                c.drawText(Birds.ALL[i].name + (birdEdit && !on ? " (꺼짐)" : ""), pp[0], pp[1] - rr - 6 * dp * k, text);
+                busy = true;
+            }
+            text.setAlpha(255);
+            if (birdEdit) {
+                text.setTextSize(15 * dp * k);
+                text.setColor(Widgets.INK);
+                c.drawText("새 자리 편집 · 끌어서 옮기고, 눌러서 켜고 끄기 · 빈 곳을 누르면 끝", cx, getHeight() - 16 * dp * k, text);
             }
         }
         if (locked) {
@@ -244,15 +313,36 @@ final class StageView extends View {
         float x = e.getX(), y = e.getY();
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
+                if (birdEdit) {
+                    draggingPerch = nearestPerch(x, y);
+                    downX = x; downY = y; moved = false;
+                    if (draggingPerch < 0) drop(x, y, 0.6f);
+                    return true;
+                }
+                longPressed = false;
                 dragging = nearest(x, y);
+                if (dragging instanceof Birds) postDelayed(longPress, 550);
                 downX = lastTickX = x; downY = lastTickY = y; moved = false;
                 drop(x, y, dragging != null ? 1f : 0.6f);
                 performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                 invalidate();
                 return true;
             case MotionEvent.ACTION_MOVE:
+                if (birdEdit) {
+                    if (draggingPerch < 0 || locked) return true;
+                    if (Math.hypot(x - downX, y - downY) > 8 * dp) moved = true;
+                    if (moved) {
+                        float nx = (x - cx) / radius, ny = (y - cy) / radius;
+                        float d = (float) Math.hypot(nx, ny);
+                        if (d > 1) { nx /= d; ny /= d; }
+                        birds.perchX[draggingPerch] = nx - birds.x;
+                        birds.perchY[draggingPerch] = ny - birds.y;
+                        invalidate();
+                    }
+                    return true;
+                }
                 if (dragging == null) return true;
-                if (Math.hypot(x - downX, y - downY) > 8 * dp) moved = true;
+                if (Math.hypot(x - downX, y - downY) > 8 * dp) { moved = true; removeCallbacks(longPress); }
                 if (moved && !locked) {
                     float nx = (x - cx) / radius, ny = (y - cy) / radius;
                     float d = (float) Math.hypot(nx, ny);
@@ -266,6 +356,23 @@ final class StageView extends View {
                 }
                 return true;
             case MotionEvent.ACTION_UP:
+                removeCallbacks(longPress);
+                if (birdEdit) {
+                    if (draggingPerch >= 0) {
+                        if (!moved) {
+                            birds.speciesOn[draggingPerch] = !birds.speciesOn[draggingPerch];
+                            performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                        }
+                        listener.onStageChanged();
+                    } else if (!longPressed) {
+                        setBirdEdit(false);
+                    }
+                    draggingPerch = -1;
+                    longPressed = false;
+                    invalidate();
+                    return true;
+                }
+                if (longPressed) { dragging = null; longPressed = false; return true; }
                 if (dragging != null) {
                     if (!moved) {
                         dragging.enabled = !dragging.enabled;
@@ -296,6 +403,17 @@ final class StageView extends View {
     void pop(SoundSource s) {
         state(s)[1] = 1f;
         drop(cx + s.x * radius, cy + s.y * radius, 1.1f);
+    }
+
+    private int nearestPerch(float x, float y) {
+        int best = -1;
+        double bestD = 34 * dp * k;
+        for (int i = 0; i < Birds.ALL.length; i++) {
+            float[] pp = perchPos(i);
+            double d = Math.hypot(pp[0] - x, pp[1] - y);
+            if (d < bestD) { bestD = d; best = i; }
+        }
+        return best;
     }
 
     private SoundSource nearest(float x, float y) {

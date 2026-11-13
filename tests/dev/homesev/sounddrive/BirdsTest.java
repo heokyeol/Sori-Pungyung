@@ -70,6 +70,33 @@ public final class BirdsTest {
         }
         check("recorded clip is used when loaded", usedClip);
 
+        // Perches: a species always sings from its own spot (no jumping around), and follows a moved perch.
+        Birds pb = new Birds();
+        java.util.Arrays.fill(pb.speciesOn, false);
+        int owlI = Birds.index("owl");
+        pb.speciesOn[owlI] = true; pb.night = true;
+        pb.x = 0.2f; pb.y = 0.1f;
+        pb.perchX[owlI] = -0.4f; pb.perchY[owlI] = 0.3f;
+        java.lang.reflect.Field vfp = Birds.class.getDeclaredField("voices");
+        vfp.setAccessible(true);
+        float[] pl = new float[512], pr = new float[512], pm = new float[512];
+        Spatial.Target pt = new Spatial.Target();
+        boolean samePerch = true; int seen = 0; long t0 = System.nanoTime() / 1_000_000;
+        for (int i = 0; i < 48000 * 60 / 512; i++) {
+            pb.renderInto(pl, pr, 512, sr, 1, 1, pt, pm);
+            for (Object v : (Object[]) vfp.get(pb)) {
+                java.lang.reflect.Field cf = v.getClass().getDeclaredField("call"); cf.setAccessible(true);
+                if (cf.get(v) == null) continue;
+                java.lang.reflect.Field sf = v.getClass().getDeclaredField("species"); sf.setAccessible(true);
+                java.lang.reflect.Field jx = v.getClass().getDeclaredField("jx"); jx.setAccessible(true);
+                if ((int) sf.get(v) != owlI || Math.abs((float) jx.get(v)) > 0.021f) samePerch = false;
+                seen++;
+            }
+        }
+        check("owl always sings from its perch (" + seen + " blocks)", samePerch && seen > 0);
+        check("call time recorded for the label", pb.calledAt[owlI] >= t0);
+        check("default perches form a ring", Math.abs(Math.hypot(Birds.defaultPerch(3)[0], Birds.defaultPerch(3)[1]) - 0.3) < 1e-4);
+
         // Flock previews: 60 s day forest, 60 s night, stereo, flock at front-right.
         if (outDir != null) {
             preview(outDir + "/birds-day.wav", false, sr);

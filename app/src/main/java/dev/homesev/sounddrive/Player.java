@@ -461,7 +461,12 @@ final class Player {
             for (SoundSource s : sources) if (s.id.equals(c.sound)) s.locked = false;
         }
         if (birds != null) {
-            for (int i = 0; i < Birds.ALL.length; i++) birds.speciesOn[i] = prefs.getBoolean("bird." + Birds.ALL[i].id, true);
+            for (int i = 0; i < Birds.ALL.length; i++) {
+                birds.speciesOn[i] = prefs.getBoolean("bird." + Birds.ALL[i].id, true);
+                float[] d = Birds.defaultPerch(i);
+                birds.perchX[i] = prefs.getFloat("perch." + Birds.ALL[i].id + ".x", d[0]);
+                birds.perchY[i] = prefs.getFloat("perch." + Birds.ALL[i].id + ".y", d[1]);
+            }
             birds.autoTime = prefs.getBoolean("bird.auto", true);
         }
     }
@@ -473,7 +478,10 @@ final class Player {
              .putFloat(s.id + ".vol", s.volume).putBoolean(s.id + ".on", s.enabled);
         }
         if (birds != null) {
-            for (int i = 0; i < Birds.ALL.length; i++) e.putBoolean("bird." + Birds.ALL[i].id, birds.speciesOn[i]);
+            for (int i = 0; i < Birds.ALL.length; i++) {
+                e.putBoolean("bird." + Birds.ALL[i].id, birds.speciesOn[i]);
+                e.putFloat("perch." + Birds.ALL[i].id + ".x", birds.perchX[i]).putFloat("perch." + Birds.ALL[i].id + ".y", birds.perchY[i]);
+            }
             e.putBoolean("bird.auto", birds.autoTime);
         }
         e.putFloat("master", engine.mixer.master);

@@ -109,6 +109,8 @@ const CATS = [
   { id: "baseball", place: "야구장", r: 500, emoji: "⚾", color: "#FF8A80", hint: "프로야구 홈구장(잠실, 사직, 고척 등)에 가면 열려요" },
 ];
 const SLEEP = [0, 15, 30, 60, 90], FADE_MS = 10 * 60e3;
+function defaultPerch(i) { const a = (Math.PI * 2 * i) / 12 - Math.PI / 2; return [Math.cos(a) * 0.3, Math.sin(a) * 0.3]; }
+const calledAt = {}; // species id → performance.now() of its last call (name label on the stage)
 const MOTION = ["멈춤", "🪐 행성 궤도", "🔄 360° 회전"];
 const $ = (id) => document.getElementById(id);
 
@@ -119,6 +121,8 @@ const S = {
   birdsOn: saved.birdsOn ?? Object.fromEntries(BIRDS.map((b) => [b.id, true])),
   unlocked: saved.unlocked ?? {}, spots: saved.spots ?? {}, spotNote: saved.spotNote ?? {},
   regions: saved.regions ?? {}, stamps: saved.stamps ?? {},
+  // Each bird species sings from its own perch around the 새 dot (offset in stage units).
+  perch: saved.perch ?? Object.fromEntries(BIRDS.map((b, i) => [b.id, defaultPerch(i)])),
 };
 const first = !saved.sounds;
 for (const s of SOUNDS) {
@@ -134,7 +138,7 @@ let saveTimer;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => localStorage.setItem("sd:state", JSON.stringify({
-    master: S.master, motion: S.motion, birdAuto: S.birdAuto, birdsOn: S.birdsOn, unlocked: S.unlocked, spots: S.spots, spotNote: S.spotNote, regions: S.regions, stamps: S.stamps,
+    master: S.master, motion: S.motion, birdAuto: S.birdAuto, birdsOn: S.birdsOn, unlocked: S.unlocked, spots: S.spots, spotNote: S.spotNote, regions: S.regions, stamps: S.stamps, perch: S.perch,
     sounds: Object.fromEntries(SOUNDS.map((s) => [s.id, { x: s.x, y: s.y, v: s.volume, on: s.on }])),
   })), 300);
 }
@@ -228,8 +232,8 @@ class FlockVoice {
     this.last[b.id] = now;
     buffer(`audio/birds/${files[Math.floor(Math.random() * files.length)]}`).then((buf) => {
       if (this.stopped) return;
-      const a = Math.random() * Math.PI * 2, d = 0.15 + Math.random() * 0.35;
-      const call = { dx: Math.cos(a) * d, dy: Math.sin(a) * d };
+      const call = { id: b.id, jx: (Math.random() - 0.5) * 0.04, jy: (Math.random() - 0.5) * 0.04 };
+      calledAt[b.id] = performance.now(); requestDraw();
       const src = ctx.createBufferSource(), g = ctx.createGain(), p = panner();
       call.p = p;
       src.buffer = buf; src.playbackRate.value = 0.97 + Math.random() * 0.06;
@@ -241,9 +245,11 @@ class FlockVoice {
       src.start();
     });
   }
-  // Each bird keeps its offset from the dot, so dragging or orbiting the dot moves the birds with it.
+  // A bird sings from its own perch (offset from the dot), so it doesn't jump around; moving the
+  // dot or the perch moves the bird with it.
   placeCall(c, smooth) {
-    let x = this.s.x + c.dx, y = this.s.y + c.dy;
+    const [px, py] = S.perch[c.id] || [0, 0];
+    let x = this.s.x + px + c.jx, y = this.s.y + py + c.jy;
     const len = Math.hypot(x, y); if (len > 1) { x /= len; y /= len; }
     place(c.p, x, y, smooth);
   }
@@ -419,12 +425,44 @@ function draw(t) {
       if (s === selected) { g2.globalAlpha = 0.6; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
       drawIcon(g2, s.id, px, py, r * 0.86, 0.92);
       const f1 = Math.max(11, 17 * U), f2 = Math.max(9, 12 * U);
+      if (birdEdit && s.flock) continue; // perches sit around the dot in edit mode; skip its label
       g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`; g2.fillText(s.name, px, py + r + f1 * 1.35);
       g2.fillStyle = MUTED; g2.font = `${f2}px ui-monospace, Menlo, monospace`; g2.fillText(`${sideText(s.x, s.y)}  /  ${Math.round(s.volume * 100)}`, px, py + r + f1 * 1.35 + f2 * 1.6);
     }
   }
+  // Bird names pop up at their perch while they call; the edit mode shows every perch.
+  const bird = SOUNDS.find((x) => x.flock);
+  if (bird && !bird.locked && bird.on) {
+    const nowT = performance.now();
+    g2.textAlign = "center";
+    BIRDS.forEach((b) => {
+      const age = (nowT - (calledAt[b.id] ?? -1e9)) / 2500;
+      if (!birdEdit && !(age >= 0 && age < 1)) return;
+      const [px, py] = perchXY(b.id), a = birdEdit ? 1 : age < 0.15 ? age / 0.15 : 1 - (age - 0.15) / 0.85, on = S.birdsOn[b.id];
+      const rr = (birdEdit ? 9 : 5) * Math.max(0.7, U);
+      g2.globalAlpha = a; g2.fillStyle = birdEdit && on ? INK : "#0b0b0b"; g2.beginPath(); g2.arc(px, py, rr, 0, 7); g2.fill();
+      g2.strokeStyle = INK; g2.lineWidth = 1.2; g2.globalAlpha = (on ? 0.86 : 0.35) * a; g2.beginPath(); g2.arc(px, py, rr, 0, 7); g2.stroke();
+      if (!birdEdit) { g2.globalAlpha = 0.35 * a; g2.beginPath(); g2.arc(px, py, rr + age * 26 * U, 0, 7); g2.stroke(); }
+      g2.globalAlpha = a; g2.fillStyle = on ? INK : MUTED; g2.font = `${Math.max(10, 12 * U)}px sans-serif`;
+      g2.fillText(b.name + (birdEdit && !on ? " (꺼짐)" : ""), px, py - rr - 6 * U);
+      busy = true;
+    });
+    if (birdEdit) { g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = `${Math.max(11, 14 * U)}px sans-serif`; g2.fillText("새 자리 편집 · 끌어서 옮기고, 눌러서 켜고 끄기 · 빈 곳을 누르면 끝", W / 2, H - 14); }
+  }
   g2.globalAlpha = 1;
   if (busy) requestDraw(); else lastFrame = 0;
+}
+let birdEdit = false, perchDrag = null, pressTimer = null, longPressed = false;
+function perchXY(id) {
+  const bird = SOUNDS.find((x) => x.flock), [ox, oy] = S.perch[id] || [0, 0];
+  let x = bird.x + ox, y = bird.y + oy; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+  return [CX + x * R, CY + y * R];
+}
+function setBirdEdit(on) {
+  const bird = SOUNDS.find((x) => x.flock);
+  birdEdit = on && !!bird && !bird.locked;
+  if (birdEdit && !bird.on) { bird.on = true; bird.anim.pop = 1; syncVoices(); save(); refresh(); }
+  requestDraw();
 }
 
 // ── Line-art icons (same patterns as the app's LineArt) ────────────────────
@@ -493,15 +531,35 @@ function nearest(x, y) {
 }
 let drag = null;
 cv.addEventListener("pointerdown", (e) => {
-  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, s = nearest(x, y);
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (birdEdit) {
+    let best = null, bd = Math.max(26, 34 * U);
+    for (const b of BIRDS) { const [px, py] = perchXY(b.id), d = Math.hypot(px - x, py - y); if (d < bd) { bd = d; best = b.id; } }
+    perchDrag = { id: best, x0: x, y0: y, moved: false };
+    cv.setPointerCapture(e.pointerId);
+    return;
+  }
+  const s = nearest(x, y);
+  longPressed = false; clearTimeout(pressTimer);
+  if (s && s.flock) pressTimer = setTimeout(() => { if (drag && !drag.moved) { longPressed = true; setBirdEdit(true); buzz(30); } }, 550);
   drag = { s, x0: x, y0: y, moved: false, tx: x, ty: y };
   cv.setPointerCapture(e.pointerId);
   drop(x, y, s ? s.color : "#ffffff", s ? 1 : 0.6); buzz(8);
 });
 cv.addEventListener("pointermove", (e) => {
+  if (birdEdit) {
+    if (!perchDrag || !perchDrag.id) return;
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (Math.hypot(x - perchDrag.x0, y - perchDrag.y0) > 8) perchDrag.moved = true;
+    if (!perchDrag.moved) return;
+    const bird = SOUNDS.find((q) => q.flock);
+    let nx = (x - CX) / R, ny = (y - CY) / R; const d = Math.hypot(nx, ny); if (d > 1) { nx /= d; ny /= d; }
+    S.perch[perchDrag.id] = [nx - bird.x, ny - bird.y]; voices.get("birds")?.move(0.006); requestDraw();
+    return;
+  }
   if (!drag || !drag.s) return;
   const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  if (Math.hypot(x - drag.x0, y - drag.y0) > 8) drag.moved = true;
+  if (Math.hypot(x - drag.x0, y - drag.y0) > 8) { drag.moved = true; clearTimeout(pressTimer); }
   if (!drag.moved) return;
   let nx = (x - CX) / R, ny = (y - CY) / R; const d = Math.hypot(nx, ny); if (d > 1) { nx /= d; ny /= d; }
   drag.s.x = nx; drag.s.y = ny; voices.get(drag.s.id)?.move(0.006); // follow the finger
@@ -509,6 +567,14 @@ cv.addEventListener("pointermove", (e) => {
   requestDraw();
 });
 cv.addEventListener("pointerup", (e) => {
+  clearTimeout(pressTimer);
+  if (birdEdit) {
+    if (perchDrag && perchDrag.id) { if (!perchDrag.moved) { S.birdsOn[perchDrag.id] = !S.birdsOn[perchDrag.id]; buzz(10); } save(); }
+    else if (!longPressed) setBirdEdit(false);
+    perchDrag = null; longPressed = false; requestDraw();
+    return;
+  }
+  if (longPressed) { drag = null; longPressed = false; return; }
   if (!drag) return;
   const s = drag.s;
   if (s && !drag.moved) toggle(s);
@@ -651,6 +717,9 @@ $("credits").onclick = () => fetch("CREDITS.txt").then((r) => r.text()).then((t)
 $("species").onclick = () => {
   const f = document.createElement("div");
   const add = (label, checked, on) => { const l = document.createElement("label"), c = document.createElement("input"); c.type = "checkbox"; c.checked = checked; c.onchange = () => { on(c.checked); save(); }; l.append(c, label); f.append(l); };
+  const btn = (label, fn) => { const b = document.createElement("button"); b.className = "btn"; b.textContent = label; b.onclick = fn; f.append(b); };
+  btn("무대에서 새 자리 옮기기", () => { $("modal").hidden = true; setBirdEdit(true); });
+  btn("새 자리 처음으로", () => { BIRDS.forEach((b, i) => (S.perch[b.id] = defaultPerch(i))); save(); requestDraw(); });
   add("시간대에 맞춰 자동 (밤엔 밤 새만)", S.birdAuto, (v) => (S.birdAuto = v));
   for (const b of BIRDS) add(b.name + (b.night ? " (밤)" : ""), S.birdsOn[b.id], (v) => (S.birdsOn[b.id] = v));
   modal("새 종류", f);

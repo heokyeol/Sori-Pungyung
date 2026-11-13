@@ -553,6 +553,10 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(px(24 * k), 0, px(24 * k), px(20 * k));
+        Button edit = bigButton("무대에서 새 자리 옮기기", Widgets.PANEL);
+        list.addView(edit, matchWrap(px(4 * k)));
+        Button resetPerch = bigButton("새 자리 처음으로", Widgets.PANEL);
+        list.addView(resetPerch, matchWrap(px(8 * k)));
         android.widget.Switch auto = switchRow("시간대에 맞춰 자동 (밤엔 밤 새만)", b.autoTime);
         auto.setOnCheckedChangeListener((v, on) -> { b.autoTime = on; player.save(); });
         list.addView(auto, matchWrap(px(8 * k)));
@@ -562,7 +566,9 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             sw.setOnCheckedChangeListener((v, on) -> { b.speciesOn[idx] = on; player.save(); });
             list.addView(sw, matchWrap(px(8 * k)));
         }
-        showSheet("새 종류", list);
+        android.app.Dialog sheet = showSheet("새 종류", list);
+        edit.setOnClickListener(v -> { sheet.dismiss(); stage.setBirdEdit(true); });
+        resetPerch.setOnClickListener(v -> { b.resetPerches(); player.save(); stage.invalidate(); });
     }
 
     /** Switch to exactly these sounds and start playing. */

@@ -36,6 +36,28 @@ final class Birds extends SoundSource {
 
     /** Which species are allowed (UI writes, audio thread reads). */
     final boolean[] speciesOn = new boolean[ALL.length];
+    /**
+     * Each species' perch: its offset from the "새" dot (stage units). A bird always sings from
+     * its own perch, so it doesn't jump around and can be told apart by where it is.
+     */
+    final float[] perchX = new float[ALL.length], perchY = new float[ALL.length];
+    /** When each species last started a call (System.nanoTime ms), for the name label on the stage. */
+    final long[] calledAt = new long[ALL.length];
+
+    /** Default perches: a ring around the dot, one species every 30°. */
+    static float[] defaultPerch(int i) {
+        double a = Math.PI * 2 * i / ALL.length - Math.PI / 2;
+        return new float[] {(float) (Math.cos(a) * 0.3), (float) (Math.sin(a) * 0.3)};
+    }
+
+    void resetPerches() {
+        for (int i = 0; i < ALL.length; i++) { float[] p = defaultPerch(i); perchX[i] = p[0]; perchY[i] = p[1]; }
+    }
+
+    static int index(String id) {
+        for (int i = 0; i < ALL.length; i++) if (ALL[i].id.equals(id)) return i;
+        return -1;
+    }
     /** When true, only night birds at night and day birds by day. */
     volatile boolean autoTime = true;
     /** Set from the clock by the player (true roughly 19:00–05:00). */
@@ -52,6 +74,7 @@ final class Birds extends SoundSource {
     Birds() {
         super("birds", "새", 0xFF9BD45A, 0.4f, 0.45f, 53);
         java.util.Arrays.fill(speciesOn, true);
+        resetPerches();
         java.util.Arrays.fill(lastCall, -1e9);
         for (int i = 0; i < MAX_VOICES; i++) voices[i] = new Voice();
     }
@@ -102,7 +125,8 @@ final class Birds extends SoundSource {
 
     private static final class Voice {
         Playable call;
-        float ox, oy; // offset from the dot: the bird moves when the dot is dragged or orbits
+        int species;   // which perch it sings from (follows the dot and the perch while singing)
+        float jx, jy;  // tiny per-call jitter so repeats aren't perfectly identical
         final Spatial.State st = new Spatial.State();
     }
 
@@ -126,7 +150,7 @@ final class Birds extends SoundSource {
             if (v.call == null) continue;
             boolean alive = v.call.render(mono, n, sr);
             for (int i = 0; i < n; i++) mono[i] *= fadeFrom + (fadeTo - fadeFrom) * i / n;
-            float px = x + v.ox, py = y + v.oy;
+            float px = x + perchX[v.species] + v.jx, py = y + perchY[v.species] + v.jy;
             float len = (float) Math.hypot(px, py);
             if (len > 1f) { px /= len; py /= len; }
             Spatial.target(px, py, sr, tg);
@@ -144,10 +168,10 @@ final class Birds extends SoundSource {
         if (pick < 0) return;
         lastCall[pick] = clock;
         free.call = makePlayable(ALL[pick].id);
-        // Scatter around the dot: 0.15–0.5 away in a random direction, kept inside the stage.
-        double a = rng.next() * Math.PI * 2, d = rng.range(0.15f, 0.5f);
-        free.ox = (float) (Math.cos(a) * d);
-        free.oy = (float) (Math.sin(a) * d);
+        free.species = pick;
+        free.jx = rng.range(-0.02f, 0.02f);
+        free.jy = rng.range(-0.02f, 0.02f);
+        calledAt[pick] = System.nanoTime() / 1_000_000;
         free.st.primed = false;
         java.util.Arrays.fill(free.st.ring, 0f);
         free.st.lpL = free.st.lpR = 0;
