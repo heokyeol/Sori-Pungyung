@@ -273,18 +273,9 @@ final class StageView extends View {
             float pop = 1f + 0.3f * st[1] * (float) Math.cos(st[1] * 9);
             float px = cx + s.x * radius, py = cy + s.y * radius;
             float on = st[0];
-            if (on < 0.5f) {
-                fill.setColor(Widgets.BG);
-                c.drawCircle(px, py, 6 * dp * k, fill);
-                line.setStrokeWidth(1.2f * dp);
-                line.setAlpha(150);
-                c.drawCircle(px, py, 6 * dp * k * pop, line);
-                text.setTypeface(Typeface.DEFAULT);
-                text.setTextSize(13 * dp * k);
-                text.setColor(Widgets.MUTED);
-                c.drawText(s.name, px, py + 24 * dp * k, text);
-            } else {
-                float r = (28 + 20 * s.volume) * dp * k * pop * (s == dragging ? 1.12f : 1f);
+            if (on < 0.05f) continue; // off sounds aren't on the stage; they come in by dragging a tile
+            {
+                float r = (28 + 20 * s.volume) * dp * k * pop * (s == dragging ? 1.12f : 1f) * (0.3f + 0.7f * on);
                 if (s == dragging && dragOut) { // "놓으면 꺼짐": faint dashed ring only
                     line.setStrokeWidth(1.2f * dp);
                     line.setAlpha(120);
@@ -452,14 +443,6 @@ final class StageView extends View {
                 if (dragging != null) {
                     if (!moved) { // a tap only selects; on/off is drag in / drag out
                         state(dragging)[1] = 1f;
-                    } else if (!dragging.enabled) { // a faint (off) dot dragged to a spot = put it there
-                        drop(x, y, 1.3f);
-                        selected = dragging;
-                        SoundSource on = dragging;
-                        dragging = null;
-                        listener.onSoundDropped(on, true);
-                        invalidate();
-                        return true;
                     } else if (dragOut) { // pulled off the stage: switch off, put it back where it was
                         dragging.x = startX; dragging.y = startY;
                         dragOut = false;
@@ -511,7 +494,7 @@ final class StageView extends View {
         SoundSource best = null;
         double bestD = 52 * dp * k;
         for (SoundSource s : sources) {
-            if (s.locked) continue;
+            if (s.locked || !s.enabled) continue; // only sounds on the stage can be grabbed
             double d = Math.hypot(cx + s.x * radius - x, cy + s.y * radius - y);
             if (d < bestD) { bestD = d; best = s; }
         }

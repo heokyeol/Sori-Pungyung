@@ -12,7 +12,7 @@ android {
     // pleos = 차량(Pleos) 화면용, galaxy = 일반 휴대폰용. 소리 엔진(src/main)은 공유.
     flavorDimensions 'target'
     productFlavors {
-        pleos { dimension 'target'; versionCode 21; versionName '0.21' }
+        pleos { dimension 'target'; versionCode 22; versionName '0.22' }
         galaxy { dimension 'target'; applicationIdSuffix '.galaxy'; versionCode 9; versionName '0.9' }
     }
 }

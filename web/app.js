@@ -413,19 +413,16 @@ function draw(t) {
     if (Math.abs(a.shown - target) > 0.001) { a.shown += (target - a.shown) * Math.min(1, dt * 10); busy = true; }
     if (a.pop > 0.001) { a.pop *= Math.exp(-dt * 6); busy = true; } else a.pop = 0;
     const pop = 1 + 0.3 * a.pop * Math.cos(a.pop * 9), px = CX + s.x * R, py = CY + s.y * R;
-    if (a.shown < 0.5) {
-      const d6 = Math.max(3.5, 6 * U);
-      g2.globalAlpha = 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, d6, 0, 7); g2.fill();
-      g2.globalAlpha = 0.6; g2.lineWidth = 1.2; g2.beginPath(); g2.arc(px, py, d6 * pop, 0, 7); g2.stroke();
-      g2.globalAlpha = 1; g2.fillStyle = MUTED; g2.font = `${Math.max(9, 13 * U)}px sans-serif`; g2.fillText(s.name, px, py + d6 + 14 * Math.max(0.7, U));
-    } else {
-      const r = (28 + 20 * s.volume) * U * pop * (drag && drag.s === s ? 1.12 : 1), offDrag = !!(drag && drag.s === s && drag.off);
-      g2.globalAlpha = offDrag ? 0.55 : 1; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.fill();
+    if (a.shown < 0.03) continue; // off sounds are not drawn on the stage (they fade/shrink out while turning off)
+    {
+      const fade = Math.min(1, a.shown);
+      const r = (28 + 20 * s.volume) * U * pop * (0.6 + 0.4 * fade) * (drag && drag.s === s ? 1.12 : 1), offDrag = !!(drag && drag.s === s && drag.off);
+      g2.globalAlpha = (offDrag ? 0.55 : 1) * fade; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.fill();
       if (offDrag) g2.setLineDash([5, 5]);
-      g2.globalAlpha = offDrag ? 0.5 : 0.94; g2.lineWidth = 1.5; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.stroke();
+      g2.globalAlpha = (offDrag ? 0.5 : 0.94) * fade; g2.lineWidth = 1.5; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.stroke();
       g2.setLineDash([]);
-      if (s === selected && !offDrag) { g2.globalAlpha = 0.6; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
-      drawIcon(g2, s.id, px, py, r * 0.86, offDrag ? 0.35 : 0.92);
+      if (s === selected && !offDrag) { g2.globalAlpha = 0.6 * fade; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
+      drawIcon(g2, s.id, px, py, r * 0.86, (offDrag ? 0.35 : 0.92) * fade);
       const f1 = Math.max(11, 17 * U), f2 = Math.max(9, 12 * U);
       if (offDrag) {
         g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`;
@@ -433,7 +430,7 @@ function draw(t) {
         continue;
       }
       if (birdEdit && s.flock) continue; // perches sit around the dot in edit mode; skip its label
-      g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`; g2.fillText(s.name, px, py + r + f1 * 1.35);
+      g2.globalAlpha = fade; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`; g2.fillText(s.name, px, py + r + f1 * 1.35);
       g2.fillStyle = MUTED; g2.font = `${f2}px ui-monospace, Menlo, monospace`; g2.fillText(`${sideText(s.x, s.y)}  /  ${Math.round(s.volume * 100)}`, px, py + r + f1 * 1.35 + f2 * 1.6);
     }
   }
@@ -540,7 +537,7 @@ function drop(x, y, color, s) { ripples.push({ x, y, s, t0: performance.now() })
 function buzz(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 function nearest(x, y) {
   let best = null, bd = Math.max(28, 52 * U); // finger-sized even when the stage is small
-  for (const s of SOUNDS) { if (s.locked) continue; const d = Math.hypot(CX + s.x * R - x, CY + s.y * R - y); if (d < bd) { bd = d; best = s; } }
+  for (const s of SOUNDS) { if (s.locked || !s.on) continue; const d = Math.hypot(CX + s.x * R - x, CY + s.y * R - y); if (d < bd) { bd = d; best = s; } }
   return best;
 }
 let drag = null;
@@ -598,7 +595,6 @@ cv.addEventListener("pointerup", (e) => {
     s.x = drag.sx; s.y = drag.sy; voices.get(s.id)?.move(0.006); toggle(s);
   }
   else if (s && !drag.moved) { s.anim.pop = 1; buzz(10); } // a tap only selects; on/off is drag in / drag out
-  else if (s && !s.on) { toggle(s); if (!playing) play(); } // a faint (off) dot dragged to a spot = put it there
   else if (s) { const r = cv.getBoundingClientRect(); drop(e.clientX - r.left, e.clientY - r.top, s.color, 0.8); save(); }
   if (s) { selected = s; refresh(); }
   drag = null; requestDraw();
@@ -610,12 +606,77 @@ function toggle(s) {
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────
+// ── Saved presets ("나만의 소리", localStorage sd.mypresets) ───────────────
+const MYKEY = "sd.mypresets", MYMAX = 6;
+let myPresets = [];
+try { const v = JSON.parse(localStorage.getItem(MYKEY) || "[]"); if (Array.isArray(v)) myPresets = v.filter((q) => q && typeof q.name === "string" && q.sounds && typeof q.sounds === "object"); } catch (e) {}
+const saveMine = () => { try { localStorage.setItem(MYKEY, JSON.stringify(myPresets)); } catch (e) {} };
+function snapshot() {
+  const o = {};
+  for (const s of SOUNDS) if (!s.locked && s.on) o[s.id] = { x: s.x, y: s.y, vol: s.volume };
+  return o;
+}
+function sameSounds(a, b) {
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  return ka.every((k) => b[k] && Math.abs(a[k].x - b[k].x) <= 0.03 && Math.abs(a[k].y - b[k].y) <= 0.03 && Math.abs(a[k].vol - b[k].vol) <= 0.03);
+}
+function matchMine() { const cur = snapshot(); return myPresets.find((q) => sameSounds(cur, q.sounds)) || null; }
 function presetName() {
-  for (const b of document.querySelectorAll(".preset")) {
+  for (const b of document.querySelectorAll(".preset[data-preset]")) {
     const ids = b.dataset.preset.split(",");
     if (SOUNDS.every((s) => s.locked || s.on === ids.includes(s.id))) return b.textContent;
   }
-  return "나만의 소리";
+  return matchMine()?.name || "나만의 소리";
+}
+function applyMine(q) {
+  for (const s of SOUNDS) {
+    if (s.locked) continue;
+    const p = q.sounds[s.id], on = !!p;
+    if (p) { s.x = p.x; s.y = p.y; s.volume = p.vol; }
+    if (on !== s.on) { s.on = on; s.anim.pop = on ? 1 : 0; }
+    else if (on) { s.anim.pop = 1; voices.get(s.id)?.move(0.006); voices.get(s.id)?.volume(s.volume); }
+  }
+  if (!playing) play(); else syncVoices();
+  save(); refresh(); requestDraw();
+}
+function renderMine() {
+  const nav = document.querySelector("nav.tabs");
+  nav.querySelectorAll(".mine, .add").forEach((e) => e.remove());
+  for (const q of myPresets) {
+    const b = document.createElement("button"); b.className = "preset mine"; b.textContent = q.name;
+    let timer = null, held = false;
+    const clear = () => clearTimeout(timer);
+    b.addEventListener("pointerdown", () => { held = false; clear(); timer = setTimeout(() => { held = true; mineMenu(q); buzz(20); }, 550); });
+    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, clear);
+    b.addEventListener("contextmenu", (e) => { e.preventDefault(); clear(); if (!held) { held = true; mineMenu(q); } });
+    b.addEventListener("click", () => { if (held) { held = false; return; } applyMine(q); });
+    nav.append(b);
+  }
+  const add = document.createElement("button"); add.className = "add"; add.textContent = "+ 저장"; add.onclick = saveCurrent;
+  nav.append(add);
+}
+function saveCurrent() {
+  const cur = snapshot();
+  if (!Object.keys(cur).length) return toast("켜진 소리가 없어요");
+  const dup = myPresets.find((q) => sameSounds(cur, q.sounds));
+  if (dup) return toast(`이미 저장된 조합이에요 (${dup.name})`);
+  if (myPresets.length >= MYMAX) return toast("저장은 6개까지예요. 저장한 탭을 길게 눌러 지울 수 있어요");
+  let n = 1; while (myPresets.some((q) => q.name === `내 소리 ${n}`)) n++;
+  const name = `내 소리 ${n}`;
+  myPresets.push({ name, sounds: cur }); saveMine(); renderMine(); refresh();
+  toast(`'${name}'${"360".includes(String(n).slice(-1)) ? "으로" : "로"} 저장했어요`); // 삼/육/영 end in a final consonant
+}
+function mineMenu(q) {
+  const f = document.createElement("div");
+  const btn = (label, fn) => { const b = document.createElement("button"); b.className = "btn"; b.textContent = label; b.onclick = fn; f.append(b); };
+  btn("지금 소리로 덮어쓰기", () => {
+    const cur = snapshot();
+    if (!Object.keys(cur).length) { $("modal").hidden = true; return toast("켜진 소리가 없어요"); }
+    q.sounds = cur; saveMine(); $("modal").hidden = true; refresh(); toast("덮어썼어요");
+  });
+  btn("지우기", () => { myPresets = myPresets.filter((x) => x !== q); saveMine(); renderMine(); $("modal").hidden = true; refresh(); toast("지웠어요"); });
+  modal(q.name, f);
 }
 function drawTile(t) {
   const s = t.s, c = t.c, d = window.devicePixelRatio || 1, w = c.clientWidth || 96;
@@ -760,10 +821,10 @@ function refreshLight() {
 function refresh() {
   const on = SOUNDS.filter((s) => !s.locked && s.on).length, name = presetName();
   $("title").textContent = name;
-  $("status").textContent = playing ? `소리 ${on}개 재생 중` : `멈춤 · 소리 ${on}개 켜짐`;
+  $("status").textContent = ""; // no small status line under the title
   $("play").className = "round " + (playing ? "playing" : "paused");
   $("play").setAttribute("aria-label", playing ? "정지" : "재생");
-  for (const b of document.querySelectorAll(".preset")) b.classList.toggle("active", b.textContent === name);
+  for (const b of document.querySelectorAll(".tabs .preset")) b.classList.toggle("active", b.textContent === name);
   refreshLight();
   $("masterVal").textContent = Math.round(S.master * 100); paintMaster();
   const left = Math.ceil(sleepLeft() / 60e3);
@@ -779,7 +840,7 @@ $("moreClose").onclick = () => ($("moreSheet").hidden = true);
 $("moreSheet").onclick = (e) => { if (e.target.id === "moreSheet") $("moreSheet").hidden = true; };
 for (const id of ["places", "dex", "reset", "credits"]) $(id).addEventListener("click", () => ($("moreSheet").hidden = true));
 $("play").onclick = () => (playing ? stop() : play());
-for (const b of document.querySelectorAll(".preset")) b.onclick = () => {
+for (const b of document.querySelectorAll(".preset[data-preset]")) b.onclick = () => {
   const ids = b.dataset.preset.split(",");
   for (const s of SOUNDS) { const on = ids.includes(s.id); if (on !== s.on) { s.on = on; s.anim.pop = on ? 1 : 0; } }
   if (!playing) play(); else syncVoices();
@@ -1026,4 +1087,4 @@ $("tabMap").onclick = openMap;
 $("placesFilter").onclick = () => { showAll = !showAll; drawPlaces(); };
 
 // ── Start ─────────────────────────────────────────────────────────────────
-rows(); resize();
+renderMine(); rows(); resize();

@@ -38,6 +38,8 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private final java.util.List<Widgets.SoundTile> tiles = new java.util.ArrayList<>();
     private final java.util.List<TextView[]> tabs = new java.util.ArrayList<>(); // {label, underline-holder}
     private final java.util.List<Widgets.Underline> tabUnders = new java.util.ArrayList<>();
+    private final java.util.List<String> tabNames = new java.util.ArrayList<>();
+    private MyPresets myPresets; // "나만의 소리" saved on this device (SharedPreferences "mypresets")
     private LinearLayout moreSheet;
     private SoundSource selected;
     static final String[][] PRESETS = {{"빗속 드라이브", "rain,wind,pad"}, {"바닷가", "waves,birds,wind"}, {"캠핑", "fire,birds,pad"}};
@@ -140,7 +142,8 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     // ── UI ──────────────────────────────────────────────────────────────────
     protected void buildUi() {
         boolean portrait = getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
-        tiles.clear(); tabs.clear(); tabUnders.clear();
+        tiles.clear(); tabs.clear(); tabUnders.clear(); tabNames.clear();
+        if (myPresets == null) myPresets = MyPresets.decode(player.prefs.getString("mypresets", ""));
         if (selected == null || selected.locked) selected = firstOn();
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(portrait ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
@@ -239,20 +242,14 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
 
         // preset tabs
         LinearLayout tabRow = new LinearLayout(this);
-        for (String[] pr : PRESETS) {
-            // A tab is just text; the active one gets a 2 px underline drawn by its background.
-            TextView tl = label(pr[0], 17, Widgets.MUTED);
-            tl.setSingleLine(true);
-            tl.setPadding(0, px(10 * k), 0, px(12 * k));
-            Widgets.Underline under = new Widgets.Underline(px(2 * k));
-            tl.setBackground(under);
-            tl.setOnClickListener(v -> applyPreset(pr[1].split(",")));
-            LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            tp.setMarginEnd(px(32 * k));
-            tabRow.addView(tl, tp);
-            tabs.add(new TextView[] {tl});
-            tabUnders.add(under);
-        }
+        for (String[] pr : PRESETS) addTab(tabRow, pr[0], v -> applyPreset(pr[1].split(",")), null);
+        for (MyPresets.Preset mp : myPresets.list) addTab(tabRow, mp.name, v -> applyMyPreset(mp), v -> { editMyPreset(mp); return true; });
+        TextView save = label("+ 저장", 17, Widgets.MUTED);
+        save.setSingleLine(true);
+        save.setAlpha(0.7f);
+        save.setPadding(0, px(10 * k), 0, px(12 * k));
+        save.setOnClickListener(v -> saveMyPreset());
+        tabRow.addView(save);
         android.widget.HorizontalScrollView tabScroll = new android.widget.HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
         tabScroll.addView(tabRow);
@@ -479,7 +476,68 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             for (SoundSource s : sources) if (!s.locked && s.enabled != want.contains(s.id)) { same = false; break; }
             if (same) return pr[0];
         }
-        return "나만의 소리";
+        MyPresets.Preset mine = myPresets != null ? myPresets.find(sources) : null;
+        return mine != null ? mine.name : "나만의 소리";
+    }
+
+    /** A tab is just text; the active one gets a 2 px underline drawn by its background. */
+    private void addTab(LinearLayout row, String name, View.OnClickListener click, View.OnLongClickListener longClick) {
+        TextView tl = label(name, 17, Widgets.MUTED);
+        tl.setSingleLine(true);
+        tl.setPadding(0, px(10 * k), 0, px(12 * k));
+        Widgets.Underline under = new Widgets.Underline(px(2 * k));
+        tl.setBackground(under);
+        tl.setOnClickListener(click);
+        if (longClick != null) tl.setOnLongClickListener(longClick);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tp.setMarginEnd(px(32 * k));
+        row.addView(tl, tp);
+        tabs.add(new TextView[] {tl});
+        tabUnders.add(under);
+        tabNames.add(name);
+    }
+
+    private void storeMyPresets() { player.prefs.edit().putString("mypresets", myPresets.encode()).apply(); }
+
+    private void shortToast(String msg) { android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show(); }
+
+    /** "+ 저장": keep what's on, where and how loud, as "내 소리 N". */
+    private void saveMyPreset() {
+        MyPresets.Preset now = MyPresets.capture(myPresets.nextName(), sources);
+        MyPresets.Preset same = myPresets.find(sources);
+        if (now.sounds.isEmpty()) { shortToast("켜진 소리가 없어요"); return; }
+        if (same != null) { shortToast("이미 저장된 조합이에요 (" + same.name + ")"); return; }
+        if (myPresets.list.size() >= MyPresets.MAX) { shortToast("저장은 " + MyPresets.MAX + "개까지예요. 저장한 탭을 길게 눌러 지울 수 있어요"); return; }
+        myPresets.list.add(now);
+        storeMyPresets();
+        buildUi();
+        boolean batchim = now.name.endsWith("3") || now.name.endsWith("6") || now.name.endsWith("0"); // 삼·육·영 → 으로
+        shortToast("'" + now.name + "'" + (batchim ? "으로" : "로") + " 저장했어요");
+    }
+
+    protected void applyMyPreset(MyPresets.Preset p) {
+        for (SoundSource s : MyPresets.apply(p, sources)) stage.pop(s);
+        stage.invalidate();
+        onStageChanged();
+        if (!player.wantPlay()) player.play();
+    }
+
+    /** Long-press a saved tab: overwrite it with what's playing now, or delete it. */
+    private void editMyPreset(MyPresets.Preset p) {
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        Button over = bigButton("지금 소리로 덮어쓰기", Widgets.PANEL);
+        list.addView(over, matchWrap(px(4 * k)));
+        Button del = bigButton("지우기", Widgets.PANEL);
+        list.addView(del, matchWrap(px(8 * k)));
+        android.app.Dialog sheet = showSheet(p.name, list);
+        over.setOnClickListener(v -> {
+            MyPresets.Preset now = MyPresets.capture(p.name, sources);
+            if (now.sounds.isEmpty()) { shortToast("켜진 소리가 없어요"); return; }
+            p.sounds.clear(); p.sounds.putAll(now.sounds);
+            storeMyPresets(); sheet.dismiss(); refresh(); shortToast("덮어썼어요");
+        });
+        del.setOnClickListener(v -> { myPresets.list.remove(p); storeMyPresets(); sheet.dismiss(); buildUi(); shortToast("지웠어요"); });
     }
 
     protected void setDark(boolean on, boolean keepMood) {
@@ -607,17 +665,16 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
 
     protected void refresh() {
         if (play == null) return;
-        int on = 0;
-        for (SoundSource s : sources) if (!s.locked && s.enabled) on++;
         String name = presetName();
         title.setText(name);
-        String state = !player.wantPlay() ? "멈춤 · 소리 " + on + "개 켜짐"
-                : player.hasFocus() ? "소리 " + on + "개 재생 중" : "다른 소리가 나오는 중이라 기다리고 있어요";
-        status.setText(state + statusText());
+        // No small status line (count, speed, gear): only the one case the listener must know about.
+        boolean waiting = player.wantPlay() && !player.hasFocus();
+        status.setText(waiting ? "다른 소리가 나오는 중이라 기다리고 있어요" : "");
+        status.setVisibility(waiting ? View.VISIBLE : View.GONE);
         play.setPlaying(player.wantPlay());
         stage.setPlaying(player.playing());
         for (int i = 0; i < tabs.size(); i++) {
-            boolean active = PRESETS[i][0].equals(name);
+            boolean active = tabNames.get(i).equals(name);
             tabs.get(i)[0].setTextColor(active ? Widgets.INK : Widgets.MUTED);
             tabUnders.get(i).setOn(active);
         }
