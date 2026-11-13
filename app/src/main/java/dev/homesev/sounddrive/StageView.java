@@ -450,12 +450,16 @@ final class StageView extends View {
                 }
                 if (longPressed) { dragging = null; longPressed = false; return true; }
                 if (dragging != null) {
-                    if (!moved) {
-                        dragging.enabled = !dragging.enabled;
+                    if (!moved) { // a tap only selects; on/off is drag in / drag out
                         state(dragging)[1] = 1f;
-                        drop(cx + dragging.x * radius, cy + dragging.y * radius, 1.3f);
-                        performHapticFeedback(android.os.Build.VERSION.SDK_INT >= 30
-                                ? HapticFeedbackConstants.CONFIRM : HapticFeedbackConstants.VIRTUAL_KEY);
+                    } else if (!dragging.enabled) { // a faint (off) dot dragged to a spot = put it there
+                        drop(x, y, 1.3f);
+                        selected = dragging;
+                        SoundSource on = dragging;
+                        dragging = null;
+                        listener.onSoundDropped(on, true);
+                        invalidate();
+                        return true;
                     } else if (dragOut) { // pulled off the stage: switch off, put it back where it was
                         dragging.x = startX; dragging.y = startY;
                         dragOut = false;

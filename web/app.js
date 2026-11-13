@@ -597,7 +597,8 @@ cv.addEventListener("pointerup", (e) => {
   if (s && drag.off) { // dragged out of the stage: off, and the dot goes back where it started
     s.x = drag.sx; s.y = drag.sy; voices.get(s.id)?.move(0.006); toggle(s);
   }
-  else if (s && !drag.moved) toggle(s);
+  else if (s && !drag.moved) { s.anim.pop = 1; buzz(10); } // a tap only selects; on/off is drag in / drag out
+  else if (s && !s.on) { toggle(s); if (!playing) play(); } // a faint (off) dot dragged to a spot = put it there
   else if (s) { const r = cv.getBoundingClientRect(); drop(e.clientX - r.left, e.clientY - r.top, s.color, 0.8); save(); }
   if (s) { selected = s; refresh(); }
   drag = null; requestDraw();
@@ -717,7 +718,7 @@ function rows() {
     const c = document.createElement("canvas"), b = document.createElement("b"), vol = document.createElement("small");
     b.textContent = s.name; el.append(c, b, vol); box.append(el);
     const t = { s, c, el, vol }; tiles.push(t);
-    el.onclick = () => { if ((tdrag && (tdrag.active || tdrag.cancelled)) || performance.now() < tdSuppress) { tdSuppress = 0; return; } selected = s; toggle(s); };
+    el.onclick = () => { if ((tdrag && (tdrag.active || tdrag.cancelled)) || performance.now() < tdSuppress) { tdSuppress = 0; return; } selected = s; refresh(); };
     tileDrag(el, s);
     el.oncontextmenu = (e) => { e.preventDefault(); selected = s; refresh(); };
   }

@@ -266,7 +266,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             if (s.locked) continue;
             Widgets.SoundTile tile = new Widgets.SoundTile(this, s, k);
             tile.selected = s == selected;
-            tile.setOnClickListener(v -> { setSound(s, !s.enabled); select(s); });
+            tile.setOnClickListener(v -> select(s)); // on/off is drag onto / off the stage
             tile.setOnLongClickListener(v -> { select(s); return tile.startCarry(); });
             android.widget.GridLayout.LayoutParams gp = new android.widget.GridLayout.LayoutParams(
                     android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED),
