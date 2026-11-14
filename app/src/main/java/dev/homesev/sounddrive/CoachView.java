@@ -23,7 +23,7 @@ final class CoachView extends View {
     }
 
     static final String TEXT = "소리를 무대로 끌어 놓아 보세요";
-    private static final long PRESS = 650, CARRY = 1300, RELEASE = 450, PAUSE = 1200, LOOP = PRESS + CARRY + RELEASE + PAUSE;
+    private static final long PRESS = 350, CARRY = 1300, RELEASE = 450, PAUSE = 1200, LOOP = PRESS + CARRY + RELEASE + PAUSE;
     private static final long IDLE_MS = 6000;
     private static final float[][] SPOTS = {{-0.45f, -0.35f}, {0.45f, -0.35f}, {-0.45f, 0.4f}, {0.45f, 0.4f}, {0f, -0.55f}};
 
@@ -98,8 +98,8 @@ final class CoachView extends View {
             t = 0;
         }
         float x, y, press, alpha = 1f;
-        float pop = 1f; // the ghost pops loose near the end of the hold, like a real lift
-        if (t < PRESS) { x = fromX; y = fromY; press = 1f - 0.15f * Math.min(1f, t / 350f); pop = t < 420 ? 0f : Math.min(1f, (t - 420) / 230f); }
+        float pop = 1f; // the ghost is picked up right away: putting a sound in needs no hold
+        if (t < PRESS) { x = fromX; y = fromY; press = 1f - 0.15f * Math.min(1f, t / 350f); pop = t < 150 ? 0f : Math.min(1f, (t - 150) / 150f); }
         else if (t < PRESS + CARRY) {
             float u = (t - PRESS) / (float) CARRY, e = u < 0.5f ? 2 * u * u : 1 - (float) Math.pow(-2 * u + 2, 2) / 2;
             x = fromX + (toX - fromX) * e;

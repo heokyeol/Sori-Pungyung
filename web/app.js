@@ -753,7 +753,13 @@ function tileDrag(el, s) {
     if (d.active) return tdUpdate(e);
     if (d.dead) return;
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
-    if (Math.hypot(dx, dy) > 8) { d.dead = true; clearTimeout(d.timer); } // moved before the hold: the panel / strip is scrolling
+    if (Math.hypot(dx, dy) > 8) {
+      // Putting a sound in needs no hold: drag toward the stage and it comes along
+      // (landscape: sideways, portrait strip: upward). Other directions scroll.
+      const portrait = matchMedia("(orientation: portrait)").matches;
+      const toward = portrait ? dy < 0 && Math.abs(dy) > Math.abs(dx) * 0.8 : Math.abs(dx) > Math.abs(dy) * 0.8;
+      if (toward) { clearTimeout(d.timer); tdStart(e); } else { d.dead = true; clearTimeout(d.timer); }
+    }
   });
   el.addEventListener("pointerup", (e) => {
     const d = tdrag; if (!d || d.s !== s || e.pointerId !== d.pid) return;
@@ -1102,7 +1108,7 @@ function coachDone() {
 }
 (function coachInit() {
   try { if (localStorage.getItem(COACH_KEY)) return; } catch (e) {}
-  const T = { press: 600, carry: 1300, release: 450, pause: 1200 }; T.total = T.press + T.carry + T.release + T.pause;
+  const T = { press: 350, carry: 1300, release: 450, pause: 1200 }; T.total = T.press + T.carry + T.release + T.pause;
   const ccv = document.createElement("canvas"), cx = ccv.getContext("2d");
   ccv.id = "coach"; ccv.setAttribute("aria-hidden", "true");
   document.body.append(ccv);
@@ -1160,11 +1166,11 @@ function coachDone() {
       cx.globalAlpha = Math.min(1, a * 1.6); cx.beginPath(); cx.arc(0, 0, 28, 0, 7); cx.fill();
       ring(0, 0, 26, 0.55 * a); drawIcon(cx, tile.s.id, 0, 0, 22, 0.55 * a); cx.restore();
     };
-    if (e < T.press) { // press and hold: the ring shrinks, then the ghost pops up slightly bigger
+    if (e < T.press) { // touch: the ring shrinks and the ghost picks up right away (no hold needed to put a sound in)
       st.phase = "press";
       const fa = Math.min(1, e / 120), fs = 1 - 0.15 * Math.min(1, e / 300);
       ring(fx, fy, FR * fs, 0.7 * fa);
-      if (e > 450) { const u = (e - 450) / 150; ghost(fx, fy, 0.6 + 0.55 * easeOut(u), Math.min(1, u)); st.ghost = { x: fx, y: fy }; }
+      if (e > 150) { const u = (e - 150) / 150; ghost(fx, fy, 0.6 + 0.55 * easeOut(u), Math.min(1, u)); st.ghost = { x: fx, y: fy }; }
       st.finger = { x: fx, y: fy };
     } else if (e < T.press + T.carry) {
       st.phase = "carry";

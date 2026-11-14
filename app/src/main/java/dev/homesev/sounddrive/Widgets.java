@@ -112,7 +112,8 @@ final class Widgets {
             t.setTextAlign(Paint.Align.CENTER);
         }
 
-        // Long-press a tile to lift it and carry it onto the stage; a plain tap only selects.
+        // Drag a tile toward the stage (sideways; upward in portrait) to carry it in — no hold needed.
+        // Long-press also works. A plain tap only selects.
         private float downX, downY;
         private boolean carried;
 
@@ -147,7 +148,26 @@ final class Widgets {
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     downX = e.getX(); downY = e.getY(); carried = false;
+                    // Hold the panel's scrolling off until we know the direction: toward the stage = carry,
+                    // anything else hands the gesture back to the scroll view.
+                    if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
                     break;
+                case MotionEvent.ACTION_MOVE: {
+                    float dx = e.getX() - downX, dy = e.getY() - downY;
+                    int slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
+                    boolean portrait = getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT;
+                    boolean toward = portrait ? dy < 0 && Math.abs(dy) > Math.abs(dx) * 0.8f : Math.abs(dx) > Math.abs(dy) * 0.8f;
+                    if (!carried && Math.hypot(dx, dy) > slop) {
+                        if (toward) {
+                            startCarry();
+                            cancelLongPress();
+                            setPressed(false);
+                            return true;
+                        }
+                        if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false); // let it scroll
+                    }
+                    break;
+                }
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     if (carried) { carried = false; cancelLongPress(); setPressed(false); return true; }
