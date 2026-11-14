@@ -33,7 +33,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     protected TextView status;
     protected float dp, k = 1f;
     private Widgets.RoundButton play;
-    private TextView title, timeView, tempView, selName, selInfo, motionValue, sleepValue, screenValue;
+    private TextView title, timeView, selName, selInfo, motionValue, sleepValue, screenValue;
     private Widgets.TickSlider selSlider;
     private final java.util.List<Widgets.SoundTile> tiles = new java.util.ArrayList<>();
     private final java.util.List<TextView[]> tabs = new java.util.ArrayList<>(); // {label, underline-holder}
@@ -47,6 +47,11 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private View darkOverlay;
     private TextView darkText;
     private boolean dark, darkKeepMood;
+    // Parked-only: while the car moves the whole screen is covered (sound keeps playing).
+    static final int REQ_PLACES = 41;
+    private boolean drivingLock;
+    private View driveCover;
+    private android.app.Dialog openSheet;
     private boolean moodScreen; // dark screen showing the sound-ripple mood light instead of plain black
     private MoodView moodView;
 
@@ -62,8 +67,6 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     }
     /** Build-specific buttons at the top right of the panel (the car build adds the mic). */
     protected void addHeaderActions(LinearLayout header) {}
-    /** Outside temperature for the header, or null. */
-    protected String headerTemp() { return null; }
     /** Whether the "화면 어둡게" cell keeps the mood light on. */
     protected boolean darkKeepsMoodDefault() { return false; }
     /** Extra text for the status line. */
@@ -206,14 +209,11 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
                 ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.1f)
                 : new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
 
-        // top row: temperature, time, actions
+        // top row: time, actions
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
-        tempView = label("", 15, Widgets.MUTED);
-        tempView.setTypeface(Widgets.MONO);
         timeView = label("", 17, Widgets.INK);
         timeView.setTypeface(Widgets.MONO);
-        top.addView(tempView);
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tlp.setMargins(px(24 * k), 0, px(16 * k), 0);
         top.addView(timeView, tlp);
@@ -328,7 +328,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         Button places = bigButton("주변 수집 장소 (레이더 · 지도)", Widgets.PANEL);
         places.setOnClickListener(v -> {
             if (!canOpenPlaces()) { android.widget.Toast.makeText(this, "정차 중에만 볼 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); return; }
-            startActivity(new android.content.Intent(this, PlacesActivity.class));
+            startActivityForResult(new android.content.Intent(this, PlacesActivity.class), REQ_PLACES);
         });
         moreSheet.addView(places, matchWrap(px(12 * k)));
         Button dex = bigButton("소리 도감 (" + unlockedCount() + "/" + collectionTotal() + ")", Widgets.PANEL);
@@ -361,6 +361,18 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         moodView.setOnClickListener(v -> setDark(false, false));
         root.addView(moodView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         darkOverlay.setVisibility(dark && !moodScreen ? View.VISIBLE : View.GONE);
+        TextView cover = new TextView(this);
+        cover.setText("정차 중에만 쓸 수 있어요\n기어를 P에 두면 다시 쓸 수 있어요");
+        cover.setTextColor(Widgets.INK);
+        cover.setTextSize(22 * k);
+        cover.setGravity(Gravity.CENTER);
+        cover.setLineSpacing(px(8 * k), 1f);
+        cover.setBackgroundColor(Widgets.BG);
+        cover.setClickable(true); // swallow every touch while driving
+        cover.setFocusable(true);
+        driveCover = cover;
+        root.addView(driveCover, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        driveCover.setVisibility(drivingLock ? View.VISIBLE : View.GONE);
         moodView.setVisibility(dark && moodScreen ? View.VISIBLE : View.GONE);
         if (dark && moodScreen) moodView.start();
         setContentView(root);
@@ -372,7 +384,6 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private final Runnable clock = new Runnable() {
         @Override public void run() {
             if (timeView != null) timeView.setText(new java.text.SimpleDateFormat("HH:mm", Locale.KOREA).format(new java.util.Date()));
-            if (tempView != null) { String t = headerTemp(); tempView.setText(t == null ? "" : t); }
             main.postDelayed(this, 20_000);
         }
     };
@@ -444,6 +455,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             w.setLayout(Math.min(dm.widthPixels - px(40), px(560 * k)), Math.round(dm.heightPixels * 0.8f));
         }
         d.show();
+        openSheet = d;
         return d;
     }
 
@@ -557,6 +569,21 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         });
         del.setOnClickListener(v -> { myPresets.list.remove(p); storeMyPresets(); sheet.dismiss(); buildUi(); shortToast("지웠어요"); });
     }
+
+    /** Parked-only use: cover the screen and close anything open while the car is moving. */
+    protected void setDrivingLock(boolean on) {
+        if (on == drivingLock) return;
+        drivingLock = on;
+        if (driveCover != null) driveCover.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (on) {
+            if (openSheet != null && openSheet.isShowing()) openSheet.dismiss();
+            if (dark) setDark(false, false);
+            if (stage != null && stage.birdEdit()) stage.setBirdEdit(false);
+            finishActivity(REQ_PLACES);
+        }
+    }
+
+    protected boolean drivingLock() { return drivingLock; }
 
     /** Mood light: the screen goes dark and shows rings rippling from each sound, in time with it. */
     protected void setMoodScreen(boolean on) {

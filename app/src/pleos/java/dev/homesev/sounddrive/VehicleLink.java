@@ -33,8 +33,6 @@ import kotlin.Unit;
 final class VehicleLink {
     interface Listener {
         void onVehicle(Float speedKmh, String gear);
-        /** Outside temperature in °C (null = unknown). */
-        default void onOutsideTemp(Float celsius) {}
         /** Called once the ambient light zones are known (0 = no controllable light). */
         default void onMoodZones(int count) {}
         /** true = some window open, false = all closed, null = unknown. */
@@ -47,7 +45,7 @@ final class VehicleLink {
     private final Listener listener;
     private Car car;
     private CarPropertyManager props;
-    private CarPropertyManager.CarPropertyEventCallback speedCb, outsideCb;
+    private CarPropertyManager.CarPropertyEventCallback speedCb;
     private Vehicle vehicle;
     private GearSelectionListener gearCb;
     private Float speedKmh;
@@ -86,16 +84,6 @@ final class VehicleLink {
                 @Override public void onErrorEvent(int prop, int area) { post(null, gear, true, false); }
             };
             props.registerCallback(speedCb, VehiclePropertyIds.PERF_VEHICLE_SPEED, CarPropertyManager.SENSOR_RATE_NORMAL);
-            try { // outside temperature for the header (public AAOS property)
-                outsideCb = new CarPropertyManager.CarPropertyEventCallback() {
-                    @Override public void onChangeEvent(CarPropertyValue v) {
-                        Float t = v != null && v.getStatus() == CarPropertyValue.STATUS_AVAILABLE && v.getValue() instanceof Float ? (Float) v.getValue() : null;
-                        main.post(() -> { if (!closed) listener.onOutsideTemp(t); });
-                    }
-                    @Override public void onErrorEvent(int prop, int area) {}
-                };
-                props.registerCallback(outsideCb, VehiclePropertyIds.ENV_OUTSIDE_TEMPERATURE, CarPropertyManager.SENSOR_RATE_ONCHANGE);
-            } catch (RuntimeException e) { Log.w(TAG, "outside temperature unavailable", e); }
         } catch (RuntimeException e) {
             Log.w(TAG, "speed unavailable", e);
             props = null;
@@ -287,7 +275,6 @@ final class VehicleLink {
         closed = true;
         for (Runnable r : unsubscribe) { try { r.run(); } catch (RuntimeException ignored) {} }
         try { if (props != null && speedCb != null) props.unregisterCallback(speedCb); } catch (RuntimeException ignored) {}
-        try { if (props != null && outsideCb != null) props.unregisterCallback(outsideCb); } catch (RuntimeException ignored) {}
         try { if (car != null) car.disconnect(); } catch (RuntimeException ignored) {}
         try {
             if (vehicle != null) {

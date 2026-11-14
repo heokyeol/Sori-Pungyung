@@ -26,7 +26,6 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
     private double[] lastSpot;
     private String lastSpotName;
     private Widgets.IconButton micBtn;
-    private Float outsideC;
     private String voiceStatus = "";
     private Switch speedComp, moodSwitch, windowSwitch;
     private boolean driving;
@@ -63,6 +62,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
 
     // ── Voice ──────────────────────────────────────────────────────────────
     private void listen() {
+        if (driving) return; // parked-only, like the screen
         if (checkSelfPermission(MIC) != PackageManager.PERMISSION_GRANTED) { requestPermissions(new String[] {MIC}, 9); return; }
         voice.listen(new VoiceControl.Heard() {
             @Override public void onListening(boolean on) {
@@ -281,9 +281,6 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         header.addView(micBtn, new LinearLayout.LayoutParams(px(40), px(40)));
     }
 
-    @Override protected String headerTemp() { return outsideC == null ? null : String.format(Locale.KOREA, "%.0f°C", outsideC); }
-
-    @Override public void onOutsideTemp(Float c) { outsideC = c; }
 
     @Override protected boolean darkKeepsMoodDefault() { return moodSwitch != null && moodSwitch.isChecked(); }
 
@@ -337,6 +334,7 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
         player.setDriving(driving);
         if (!driving && pendingUnlock != null) { String m = pendingUnlock; pendingUnlock = null; super.announceUnlock(m); }
         stage.setLocked(driving);
+        setDrivingLock(driving);
         float kmh = speedKmh == null ? 0 : speedKmh;
         player.engine.mixer.extraDb = speedComp.isChecked() ? Math.min(6f, kmh / 100f * 6f) : 0f;
         refresh();
