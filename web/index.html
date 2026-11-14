@@ -48,7 +48,7 @@
   <div class="sheet">
     <div class="sheetHead"><h2>더보기</h2><button id="moreClose" class="btn small">닫기</button></div>
     <div class="menu">
-      <button id="places" class="btn">주변 수집 장소 (레이더 · 지도)</button>
+      <button id="places" class="btn">주변 수집 장소 (지도)</button>
       <button id="dex" class="btn">소리 도감</button>
       <button id="reset" class="btn">위치 처음으로</button>
       <button id="darkOnly" class="btn">완전히 어둡게</button>
@@ -67,13 +67,10 @@
 <div id="placesView" hidden>
   <div class="bar">
     <button id="placesClose" class="btn small">닫기</button>
-    <button id="tabRadar" class="btn small active">레이더</button>
-    <button id="tabMap" class="btn small">지도</button>
     <button id="placesFilter" class="btn small">아직 못 모은 것만</button>
   </div>
   <div id="placesBody">
-    <canvas id="radar"></canvas>
-    <div id="map" hidden></div>
+    <div id="map"></div>
   </div>
   <p id="placeInfo">점을 누르면 어떤 소리를 수집할 수 있는지 보여 줘요.</p>
 </div>

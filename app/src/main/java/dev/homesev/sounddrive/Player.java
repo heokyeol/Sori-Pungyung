@@ -33,7 +33,7 @@ final class Player {
         default void onStamp(String placeName) {}
         /** At a seasonal landmark out of season ("겨울에 다시 오면 …"). */
         default void onOffSeason(String message) {}
-        /** New position fix (for the places radar/map). */
+        /** New position fix (for the places map). */
         default void onLocation(double lat, double lon) {}
     }
 

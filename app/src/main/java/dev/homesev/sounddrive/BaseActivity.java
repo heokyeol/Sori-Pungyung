@@ -325,7 +325,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         moreSheet.setPadding(px(20 * k), px(8 * k), px(20 * k), px(20 * k));
         addExtras(moreSheet);
         addDarkButtons(moreSheet);
-        Button places = bigButton("주변 수집 장소 (레이더 · 지도)", Widgets.PANEL);
+        Button places = bigButton("주변 수집 장소 (지도)", Widgets.PANEL);
         places.setOnClickListener(v -> {
             if (!canOpenPlaces()) { android.widget.Toast.makeText(this, "정차 중에만 볼 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); return; }
             startActivityForResult(new android.content.Intent(this, PlacesActivity.class), REQ_PLACES);

@@ -95,7 +95,7 @@ final class Unlocks {
     /** Unlock radius of place i (regions differ: an island vs a library). */
     double radius(int i) { return radii.get(i); }
 
-    /** A place for display (radar / map). */
+    /** A place for display (map). */
     static final class Place {
         final Category category;
         final double lat, lon, distanceM, bearingDeg;

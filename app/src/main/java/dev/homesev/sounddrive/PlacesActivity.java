@@ -35,24 +35,25 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Where to find unlockable sounds: an offline radar (default) and a real map.
+ * Where to find unlockable sounds: a real map. Tapping a pin pops up its info right there.
  * The map uses MapLibre with OpenFreeMap tiles (free, no API key; needs internet).
  * Place pins come from the app's own offline list, not from a map API.
  */
-public final class PlacesActivity extends Activity implements Player.Listener, RadarView.Listener {
+public final class PlacesActivity extends Activity implements Player.Listener {
     private static final String MAP_STYLE = "https://tiles.openfreemap.org/styles/dark";
     private static final double[] FALLBACK = {37.5665, 126.9780}; // Seoul City Hall until a fix arrives
 
     private Player player;
     private float dp;
     private FrameLayout content;
-    private RadarView radar;
+    private TextView popup;
+    private LatLng popupAt;
     private MapView mapView;
     private MapLibreMap map;
     private Style style;
     private TextView info;
-    private Button radarBtn, mapBtn, filterBtn;
-    private boolean showAll, mapMode;
+    private Button filterBtn;
+    private boolean showAll;
     private boolean cameraPlaced;
     private Button guideBtn;
     private Navigator navigator;
@@ -76,13 +77,9 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         bar.setPadding(pad, pad, pad, pad);
         Button back = button("← 닫기");
         back.setOnClickListener(v -> finish());
-        radarBtn = button("레이더");
-        radarBtn.setOnClickListener(v -> setMapMode(false));
-        mapBtn = button("지도");
-        mapBtn.setOnClickListener(v -> setMapMode(true));
         filterBtn = button("");
         filterBtn.setOnClickListener(v -> { showAll = !showAll; refreshData(); });
-        for (Button x : new Button[] {back, radarBtn, mapBtn, filterBtn}) {
+        for (Button x : new Button[] {back, filterBtn}) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(52 * Widgets.scale), 1f);
             lp.setMarginEnd(px(6));
             bar.addView(x, lp);
@@ -90,12 +87,21 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         root.addView(bar);
 
         content = new FrameLayout(this);
-        radar = new RadarView(this, this);
-        content.addView(radar, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mapView = new MapView(this);
         mapView.onCreate(b);
-        mapView.setVisibility(View.GONE);
         content.addView(mapView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        popup = new TextView(this);
+        popup.setTextColor(Color.WHITE);
+        popup.setTextSize(15 * Widgets.scale);
+        popup.setPadding(px(12), px(8), px(12), px(8));
+        popup.setMaxWidth(px(300));
+        GradientDrawable pbg = new GradientDrawable();
+        pbg.setCornerRadius(px(10));
+        pbg.setColor(0xF0141414);
+        pbg.setStroke(1, 0x66FFFFFF);
+        popup.setBackground(pbg);
+        popup.setVisibility(View.GONE);
+        content.addView(popup, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         info = new TextView(this);
@@ -119,6 +125,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         mapView.getMapAsync(m -> {
             map = m;
             m.getUiSettings().setRotateGesturesEnabled(false);
+            m.addOnCameraMoveListener(this::placePopup);
             m.setStyle(new Style.Builder().fromUri(MAP_STYLE), s -> {
                 style = s;
                 s.addSource(new GeoJsonSource("places"));
@@ -151,7 +158,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                 if (style == null) return false;
                 android.graphics.PointF sp = m.getProjection().toScreenLocation(pt);
                 List<Feature> f = m.queryRenderedFeatures(new android.graphics.RectF(sp.x - 20, sp.y - 20, sp.x + 20, sp.y + 20), "places-dots");
-                if (f.isEmpty()) return false;
+                if (f.isEmpty()) { hidePopup(); return false; }
                 Feature ft = f.get(0);
                 double[] me = here();
                 Point p = (Point) ft.geometry();
@@ -163,23 +170,18 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                     select(p.latitude(), p.longitude(), spot.place);
                     String sound = spot.sound;
                     for (SoundSource s2 : player.sources) if (s2.id.equals(spot.sound)) sound = s2.name;
-                    info.setTag("tapped");
-                    info.setText(String.format(Locale.KOREA, "%s · %s쪽 %.0fkm\n%s: %s", spot.place,
-                            Unlocks.direction(bearing(me[0], me[1], p.latitude(), p.longitude())),
-                            distance(me[0], me[1], p.latitude(), p.longitude()) / 1000,
-                            player.spotInfo(spot.id) != null ? "이미 수집한 소리" : spot.seasonName() + "에 가면 수집할 수 있는 소리", sound));
+                    showPopup(pt, spot.place + "\n" + (player.spotInfo(spot.id) != null ? "수집한 소리" : "수집할 수 있는 소리") + ": " + sound);
                     return true;
                 }
                 Regions.Region rg = Regions.byId(catId.startsWith("region:") ? catId.substring(7) : catId);
                 if (rg == null) return false;
                 Unlocks.Category c = asCategory(rg);
-                double d = distance(me[0], me[1], p.latitude(), p.longitude());
                 select(p.latitude(), p.longitude(), ft.getStringProperty("n"));
-                showInfo(c, ft.getStringProperty("n"), d, bearing(me[0], me[1], p.latitude(), p.longitude()));
+                showPopup(pt, infoText(c, ft.getStringProperty("n")));
                 return true;
             });
         });
-        setMapMode(false);
+        Toast.makeText(this, "지도는 인터넷이 필요해요", Toast.LENGTH_SHORT).show();
         refreshData();
     }
 
@@ -194,19 +196,6 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         return new Unlocks.Category(r.id, r.sound, r.name, r.radiusM, r.hint(), r.emoji, s != null ? s.color : 0xFFFFFFFF);
     }
 
-    private List<Unlocks.Place> regionPlaces(double[] me, int max) {
-        List<Unlocks.Place> out = new ArrayList<>();
-        for (Regions.Region r : Regions.nearest(me[0], me[1], hiddenRegions(), max)) {
-            double d = Regions.distance(r, me[0], me[1]);
-            if (d > RadarView.RANGE_M) continue;
-            double[] pt = Regions.nearestPoint(r, me[0], me[1]);
-            Unlocks.Place pl = new Unlocks.Place(asCategory(r), pt[0], pt[1], r.name, d, Regions.bearing(r, me[0], me[1]));
-            pl.radiusM = r.radiusM;
-            out.add(pl);
-        }
-        return out;
-    }
-
     private double[] here() {
         double[] l = player.lastLocation();
         return l != null ? l : FALLBACK;
@@ -216,11 +205,8 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         filterBtn.setText(showAll ? "전부 보기" : "아직 못 모은 것만");
         double[] me = here();
         boolean fix = player.lastLocation() != null;
-        List<Unlocks.Place> near = regionPlaces(me, 12);
-        radar.setPlaces(near, fix);
         if (info.getTag() == null) {
             String head = !showAll && player.regionsVisited().size() == Regions.ALL.length ? "모든 지역 소리를 열었어요!"
-                    : near.isEmpty() ? "300km 안에는 열 수 있는 지역이 없어요. 지도에서 찾아보세요."
                     : "점을 누르면 어떤 소리를 수집할 수 있는지 보여 줘요.";
             info.setText((fix ? head : "위치를 아직 못 받았어요. 서울시청 기준으로 보여 줘요.") + seasonLine(me));
         }
@@ -280,11 +266,6 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
                 Unlocks.direction(Seasons.bearing(sp, me[0], me[1])), d / 1000, sound);
     }
 
-    @Override public void onPlaceTapped(Unlocks.Place p) {
-        select(p.lat, p.lon, p.name);
-        showInfo(p.category, p.name, p.distanceM, p.bearingDeg, p.radiusM);
-    }
-
     private void select(double lat, double lon, String name) {
         selLat = lat; selLon = lon; selName = name;
         if (navigator != null) guideBtn.setVisibility(View.VISIBLE);
@@ -299,26 +280,28 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
         }));
     }
 
-    private void showInfo(Unlocks.Category c, String name, double d, double bearing) { showInfo(c, name, d, bearing, c.radiusM); }
-
-    private void showInfo(Unlocks.Category c, String name, double d, double bearing, double radiusM) {
+    private String infoText(Unlocks.Category c, String name) {
         String sound = c.sound;
         for (SoundSource s : player.sources) if (s.id.equals(c.sound)) sound = s.name;
-        boolean open = player.regionInfo(c.id) != null;
-        String dist = d >= 1000 ? String.format(Locale.KOREA, "%.1fkm", d / 1000) : String.format(Locale.KOREA, "%.0fm", d);
-        info.setTag("tapped");
-        info.setText(name + " · " + Unlocks.direction(bearing) + "쪽 " + dist
-                + "\n" + (open ? "이미 수집한 소리: " + sound : "가면 수집할 수 있는 소리: " + sound
-                + (radiusM >= 1000 ? String.format(Locale.KOREA, " (%.0fkm 안으로)", radiusM / 1000) : String.format(Locale.KOREA, " (%.0fm 안으로)", radiusM))));
+        return name + "\n" + (player.regionInfo(c.id) != null ? "수집한 소리" : "수집할 수 있는 소리") + ": " + sound;
     }
 
-    private void setMapMode(boolean on) {
-        mapMode = on;
-        radar.setVisibility(on ? View.GONE : View.VISIBLE);
-        mapView.setVisibility(on ? View.VISIBLE : View.GONE);
-        style(radarBtn, !on);
-        style(mapBtn, on);
-        if (on) Toast.makeText(this, "지도는 인터넷이 필요해요", Toast.LENGTH_SHORT).show();
+    /** Info bubble right above the tapped pin; follows the pin while the map moves. */
+    private void showPopup(LatLng at, String text) {
+        popupAt = at;
+        popup.setText(text);
+        popup.setVisibility(View.VISIBLE);
+        popup.post(this::placePopup);
+    }
+
+    private void hidePopup() { popupAt = null; popup.setVisibility(View.GONE); }
+
+    private void placePopup() {
+        if (popupAt == null || map == null) return;
+        android.graphics.PointF sp = map.getProjection().toScreenLocation(popupAt);
+        float w = popup.getWidth(), h = popup.getHeight();
+        popup.setX(Math.max(0, Math.min(content.getWidth() - w, sp.x - w / 2)));
+        popup.setY(Math.max(0, sp.y - h - px(14)));
     }
 
     // ── Player events ──────────────────────────────────────────────────────
@@ -333,6 +316,7 @@ public final class PlacesActivity extends Activity implements Player.Listener, R
 
     @Override public void onUnlocked(String soundName, String placeName) {
         info.setTag(null);
+        hidePopup();
         refreshData();
         Toast.makeText(this, placeName + "에서 '" + soundName + "' 소리를 수집했어요", Toast.LENGTH_LONG).show();
     }

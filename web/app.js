@@ -1118,63 +1118,26 @@ if (navigator.geolocation) {
   }, () => { geoOk = false; }, { enableHighAccuracy: true, maximumAge: 10000 });
 }
 
-// ── Places view: radar + map ─────────────────────────────────────────────
-let showAll = false, mapObj = null, radarPts = [];
-// Regions are far apart, so the radar uses a log distance scale: 100 m at the centre … 300 km at the edge.
-const RANGE = 300000, FALLBACK = { lat: 37.5665, lon: 126.978 };
-const radarScale = (d) => (d <= 100 ? 0 : Math.min(1, Math.log10(d / 100) / Math.log10(RANGE / 100)));
-const rc = $("radar"), rg = rc.getContext("2d");
-// Radar/map show regions (and seasonal spots on the map). Hidden landmarks are never shown.
-function nearPlaces(me) {
-  return REGIONS.filter((g) => showAll || !S.regions[g.id]).map((g) => {
-    const [la, lo] = regionPoint(g, me.lat, me.lon);
-    return { g, name: g.name, d: regionDist(g, me.lat, me.lon), b: bearing(me.lat, me.lon, la, lo), lat: la, lon: lo, r: g.r };
-  }).filter((p) => p.d <= RANGE).sort((a, b) => a.d - b.d).slice(0, 12);
-}
+// ── Places view: map (tap a pin → popup right there) ─────────────────────
+let showAll = false, mapObj = null, popupObj = null;
+const FALLBACK = { lat: 37.5665, lon: 126.978 };
+const DIRS = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"];
 function drawPlaces() {
   $("placesFilter").textContent = showAll ? "전부 보기" : "아직 못 모은 것만";
-  const me = here || FALLBACK, r = rc.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  rc.width = r.width * dpr; rc.height = r.height * dpr; rg.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const cx = r.width / 2, cy = r.height / 2, rad = Math.min(r.width, r.height) / 2 - 30;
-  rg.fillStyle = "#0b0b0b"; rg.fillRect(0, 0, r.width, r.height);
-  rg.strokeStyle = "rgba(255,255,255,.2)"; rg.fillStyle = "rgba(255,255,255,.6)"; rg.font = "12px sans-serif"; rg.textAlign = "center";
-  for (const m of [1000, 10000, 100000, RANGE]) { const rr = radarScale(m) * rad; rg.beginPath(); rg.arc(cx, cy, rr, 0, 7); rg.stroke(); rg.fillText(m / 1000 + "km", cx + rr * 0.71 + 16, cy - rr * 0.71); }
-  rg.font = "15px sans-serif"; rg.fillText("N", cx, cy - rad - 10);
-  radarPts = [];
-  const list = nearPlaces(me);
-  for (const p of list.slice().reverse()) {
-    const rr = radarScale(p.d) * rad, a = (p.b * Math.PI) / 180;
-    const x = cx + Math.sin(a) * rr, y = cy - Math.cos(a) * rr;
-    rg.globalAlpha = 1; rg.fillStyle = "#0b0b0b"; rg.beginPath(); rg.arc(x, y, 18, 0, 7); rg.fill();
-    rg.strokeStyle = INK; rg.globalAlpha = 0.85; rg.lineWidth = 1.4; rg.beginPath(); rg.arc(x, y, 18, 0, 7); rg.stroke();
-    drawIcon(rg, p.g.sound, x, y, 15, 0.85);
-    rg.globalAlpha = 1; rg.fillStyle = MUTED; rg.font = "12px sans-serif"; rg.fillText(p.name, x, y + 33);
-    radarPts.push({ x, y, p });
-  }
-  rg.fillStyle = INK; rg.beginPath(); rg.arc(cx, cy, 8, 0, 7); rg.fill();
-  if (!here) { rg.fillStyle = "rgba(255,255,255,.6)"; rg.fillText("위치를 못 받아서 서울시청 기준이에요", cx, cy + rad * 0.55); }
-  if ($("placeInfo").dataset.tapped !== "1") {
-    const ns = nearestSpot(me), now = SEASONS[seasonOf(new Date().getMonth() + 1)];
-    $("placeInfo").textContent = "점을 누르면 어떤 소리를 수집할 수 있는지 보여 줘요.\n" + (ns
-      ? `이번 ${now} 명소: ${ns.sp.place} · ${["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(ns.b / 45) % 8]}쪽 ${Math.round(ns.d / 1000)}km (${SOUNDS.find((x) => x.spot === ns.sp.id).name})`
-      : `이번 ${now} 명소는 모두 열었어요`);
-  }
+  const me = here || FALLBACK, ns = nearestSpot(me), now = SEASONS[seasonOf(new Date().getMonth() + 1)];
+  $("placeInfo").textContent = "점을 누르면 어떤 소리를 수집할 수 있는지 보여 줘요.\n" + (ns
+    ? `이번 ${now} 명소: ${ns.sp.place} · ${DIRS[Math.round(ns.b / 45) % 8]}쪽 ${Math.round(ns.d / 1000)}km (${SOUNDS.find((x) => x.spot === ns.sp.id).name})`
+    : `이번 ${now} 명소는 모두 열었어요`);
   if (mapObj && mapObj.getSource("places")) updateMap();
 }
-function info(p) {
-  const g = p.g || REGIONS.find((x) => x.id === p.c);
-  const cat = { emoji: g.emoji, r: g.r }, s = SOUNDS.find((x) => x.id === g.sound);
-  p.c = g.id;
-  const dd = p.d >= 1000 ? (p.d / 1000).toFixed(1) + "km" : Math.round(p.d) + "m";
-  const dir = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(p.b / 45) % 8];
-  $("placeInfo").dataset.tapped = "1";
-  $("placeInfo").textContent = `${p.name} · ${dir}쪽 ${dd}\n` + (S.regions[g.id] ? `이미 수집한 소리: ${s.name}` : `가면 수집할 수 있는 소리: ${s.name} (${(p.r || cat.r) >= 1000 ? (p.r || cat.r) / 1000 + "km" : (p.r || cat.r) + "m"} 안으로)`);
+function popupAt(lngLat, text) {
+  if (popupObj) popupObj.remove();
+  popupObj = new maplibregl.Popup({ offset: 14, maxWidth: "280px" }).setLngLat(lngLat).setText(text).addTo(mapObj);
 }
-rc.addEventListener("pointerup", (e) => {
-  const r = rc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  let best = null, bd = 30; for (const q of radarPts) { const d = Math.hypot(q.x - x, q.y - y); if (d < bd) { bd = d; best = q.p; } }
-  if (best) info(best);
-});
+function regionText(g, name) {
+  const s = SOUNDS.find((x) => x.id === g.sound);
+  return `${name}\n${S.regions[g.id] ? "수집한 소리" : "수집할 수 있는 소리"}: ${s.name}`;
+}
 function geojson() {
   const now = seasonOf(new Date().getMonth() + 1), feats = [];
   for (const g of REGIONS) {
@@ -1196,8 +1159,6 @@ function updateMap() {
 }
 function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.append(s); }); }
 async function openMap() {
-  $("radar").hidden = true; $("map").hidden = false;
-  $("tabMap").classList.add("active"); $("tabRadar").classList.remove("active");
   if (mapObj) { mapObj.resize(); return; }
   const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"; document.head.append(css);
   try { await loadScript("https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"); } catch (e) { $("placeInfo").textContent = "지도를 불러오지 못했어요. 인터넷 연결을 확인해 주세요."; return; }
@@ -1211,23 +1172,20 @@ async function openMap() {
     mapObj.addLayer({ id: "me", type: "circle", source: "me", paint: { "circle-color": "#ededed", "circle-radius": 8, "circle-stroke-color": "#000", "circle-stroke-width": 2.5 } });
     updateMap();
     mapObj.on("click", "dots", (e) => {
-      const f = e.features[0], [lo, la] = f.geometry.coordinates, m = here || FALLBACK;
+      const f = e.features[0], [lo, la] = f.geometry.coordinates;
       if (f.properties.cat.startsWith("spot:")) {
         const sp = SPOTS.find((x) => x.id === f.properties.cat.slice(5)), s = SOUNDS.find((x) => x.spot === sp.id);
-        const d = dist(m.lat, m.lon, la, lo), dir = ["북", "북동", "동", "남동", "남", "남서", "서", "북서"][Math.round(bearing(m.lat, m.lon, la, lo) / 45) % 8];
-        $("placeInfo").dataset.tapped = "1";
-        $("placeInfo").textContent = `${sp.place} · ${dir}쪽 ${Math.round(d / 1000)}km\n${S.spots[sp.id] ? "이미 수집한 소리" : SEASONS[sp.season] + "에 가면 수집할 수 있는 소리"}: ${s.name}`;
+        popupAt([lo, la], `${sp.place}\n${S.spots[sp.id] ? "수집한 소리" : "수집할 수 있는 소리"}: ${s.name}`);
         return;
       }
-      info({ c: f.properties.cat, name: f.properties.n, d: dist(m.lat, m.lon, la, lo), b: bearing(m.lat, m.lon, la, lo) });
+      popupAt([lo, la], regionText(REGIONS.find((x) => x.id === f.properties.cat), f.properties.n));
     });
+    mapObj.on("mouseenter", "dots", () => (mapObj.getCanvas().style.cursor = "pointer"));
+    mapObj.on("mouseleave", "dots", () => (mapObj.getCanvas().style.cursor = ""));
   });
 }
-function openRadar() { $("map").hidden = true; $("radar").hidden = false; $("tabRadar").classList.add("active"); $("tabMap").classList.remove("active"); drawPlaces(); }
-$("places").onclick = () => { $("placesView").hidden = false; $("placeInfo").dataset.tapped = ""; openRadar(); };
+$("places").onclick = () => { $("placesView").hidden = false; drawPlaces(); openMap(); };
 $("placesClose").onclick = () => ($("placesView").hidden = true);
-$("tabRadar").onclick = openRadar;
-$("tabMap").onclick = openMap;
 $("placesFilter").onclick = () => { showAll = !showAll; drawPlaces(); };
 
 // ── First-run coach: a ghost finger shows "press, hold, carry a tile onto the stage" until the first real drop ──
