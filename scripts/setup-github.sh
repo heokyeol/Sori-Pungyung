@@ -32,7 +32,7 @@ else
   echo "  ⚠️  보호 규칙 적용 실패:"
   sed 's/^/     /' /tmp/bp_err.txt
   echo "     무료 계정의 Private 저장소는 브랜치 보호가 지원되지 않을 수 있습니다."
-  echo "     → CLAUDE.md 규칙(main 직접 푸시 금지)으로 대신 지키거나, GitHub Education/Pro를 사용하세요."
+  echo "     → 팀 규칙(main 직접 푸시 금지)으로 대신 지키거나, GitHub Education/Pro를 사용하세요."
 fi
 
 echo "▶ 머지 후 브랜치 자동 삭제, squash 머지 사용"

@@ -1,4 +1,4 @@
-# GitHub 협업 가이드 (처음 쓰는 2인 팀 + Claude 에이전트용)
+# GitHub 협업 가이드 (처음 쓰는 2인 팀용)
 
 > **2026-11-11 규칙 간소화:** `main`에 직접 올리지만 않으면 된다. 브랜치에서 작업하고 브랜치로 푸시한다. 아래의 PR·이슈 절차는 필요할 때만 쓰는 참고용이다.
 
@@ -40,9 +40,6 @@ main ──●──────────●──────────●
 brew install git gh
 ```
 - Android Studio 설치 (https://developer.android.com/studio)
-- Claude Code 설치되어 있는지 확인
-
-> 이 명령들은 Claude에게 "0단계 도구 설치 도와줘"라고 해도 됩니다.
 
 ### 0-3. Git 내 정보 등록 (커밋에 이름이 찍힘)
 ```bash
@@ -89,7 +86,7 @@ gh api -X PUT repos/heokyeol/hyundai-app-contest/collaborators/<동료아이디>
 ./scripts/setup-github.sh
 ```
 - main에 직접 푸시 금지, PR 필수, 리뷰 1명 승인 필요, CI 통과 필요.
-- 무료 계정의 **Private 저장소에서는 브랜치 보호가 안 될 수 있습니다** (GitHub 요금제 제한). 그 경우 스크립트가 알려주고, 대신 `CLAUDE.md` 규칙(main 직접 푸시 금지)으로 지킵니다. 학생이면 GitHub Education(무료 Pro)을 신청하면 사용 가능합니다.
+- 무료 계정의 **Private 저장소에서는 브랜치 보호가 안 될 수 있습니다** (GitHub 요금제 제한). 그 경우 스크립트가 알려주고, 대신 팀 규칙(main 직접 푸시 금지)으로 지킵니다. 학생이면 GitHub Education(무료 Pro)을 신청하면 사용 가능합니다.
 
 ### 1-5. Android 프로젝트 생성
 Android Studio → New Project → **Automotive** 탭의 템플릿(또는 공모전 제공 템플릿) → 위치를 이 `pleos-app` 폴더로 지정.
@@ -167,28 +164,7 @@ git pull
 
 ---
 
-## 3단계. Claude 에이전트와 함께 쓰기
-
-두 사람 모두 Claude가 `CLAUDE.md`를 자동으로 읽으므로 같은 규칙을 따릅니다. 아래 문장을 그대로 복사해서 쓰세요.
-
-| 상황 | Claude에게 이렇게 말하기 |
-|------|--------------------------|
-| 작업 시작 | `이슈 #12 작업 시작해줘. main 최신화하고 규칙대로 브랜치 만들어줘.` |
-| 중간 저장 | `지금까지 변경사항 커밋해줘.` |
-| 작업 완료 | `빌드·테스트 확인하고 푸시한 다음 PR 만들어줘. 리뷰어는 <동료아이디>.` |
-| 동료 PR 리뷰 | `PR #15 체크아웃해서 빌드해 보고 리뷰 코멘트 남겨줘.` |
-| 리뷰 반영 | `PR #15에 달린 리뷰 코멘트 확인하고 수정해줘.` |
-| main이 바뀌었을 때 | `main 최신 내용을 내 브랜치에 합쳐줘. 충돌 나면 설명해줘.` |
-| 상태 파악 | `지금 열린 이슈랑 PR 현황 정리해줘.` |
-
-**에이전트 사용 시 주의**
-- Claude가 `--force`, `reset --hard`, 브랜치 삭제를 하려 하면 이유를 묻고 신중히 허락하세요.
-- 둘의 Claude가 **같은 파일을 동시에** 고치면 충돌이 납니다. 이슈 담당자를 나눠서 피하세요.
-- Claude가 만든 PR도 **사람이 한 번은 읽고** 승인하세요. 리뷰 = 서로 코드 이해하는 시간.
-
----
-
-## 4단계. 충돌(conflict) 해결
+## 3단계. 충돌(conflict) 해결
 
 PR 화면에 "This branch has conflicts" 또는 `git pull`/`git merge` 중 CONFLICT 메시지가 뜨면:
 
@@ -205,7 +181,7 @@ main(동료)의 코드
 >>>>>>> main
 ```
 1. 둘 중 하나를 고르거나 둘을 합친 최종 코드로 고치고 `<<<` `===` `>>>` 줄을 지웁니다.
-   (Android Studio: Git → Resolve Conflicts 화면이 편함 / 또는 Claude에게 "충돌 설명하고 해결안 보여줘")
+   (Android Studio: Git → Resolve Conflicts 화면이 편함)
 2. 빌드 확인 후:
 ```bash
 git add .
@@ -216,20 +192,20 @@ git push
 
 ---
 
-## 5단계. 자주 하는 실수와 복구
+## 4단계. 자주 하는 실수와 복구
 
 | 상황 | 해결 |
 |------|------|
 | main에서 작업해 버렸다 (커밋 전) | `git switch -c feat/새브랜치` — 변경사항이 그대로 따라감 |
-| main에 커밋해 버렸다 (푸시 전) | `git switch -c feat/새브랜치` → `git switch main` → `git reset --hard origin/main` (Claude에게 "main에 실수로 커밋했어, 브랜치로 옮겨줘"라고 해도 됨) |
+| main에 커밋해 버렸다 (푸시 전) | `git switch -c feat/새브랜치` → `git switch main` → `git reset --hard origin/main` |
 | 커밋 메시지 오타 (푸시 전) | `git commit --amend -m "새 메시지"` |
 | 비밀 키를 커밋했다 | 즉시 키를 **폐기/재발급**하고 팀에 알리기. 기록에서 지우는 건 그 다음 문제 |
 | `git push`가 거절됨 (rejected) | `git pull` 후 다시 `git push` |
-| 뭐가 뭔지 모르겠다 | `git status` 결과를 Claude에게 보여주고 "지금 상태 설명해줘" |
+| 뭐가 뭔지 모르겠다 | `git status` 결과를 동료와 같이 보기 |
 
 ---
 
-## 6단계. 공모전 마감 대비
+## 5단계. 공모전 마감 대비
 
 - 마감 전 버전은 태그로 고정: `gh release create v1.0-submit --generate-notes`
   (APK를 첨부하려면 `gh release upload v1.0-submit app/build/outputs/apk/debug/app-debug.apk`)

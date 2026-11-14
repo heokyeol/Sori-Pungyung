@@ -8,7 +8,6 @@
 
 ## 폴더 구조
 ```
-.claude/settings.json        위험한 git 명령 실행 전 확인받도록 하는 공용 설정
 .github/
   pull_request_template.md   PR 양식
   ISSUE_TEMPLATE/            이슈 양식 (기능/버그)
