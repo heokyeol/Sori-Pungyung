@@ -25,7 +25,7 @@ import java.util.Locale;
  * Screen shared by the Pleos and Galaxy builds: stage, sound rows, presets, bird species,
  * sleep timer and the dark (sleep) screen. Each build's MainActivity adds its extras.
  */
-abstract class BaseActivity extends Activity implements StageView.Listener, Player.Listener {
+abstract class BaseActivity extends Activity implements StageView.Listener, Player.Listener, CoachView.Host {
     protected final Handler main = new Handler(Looper.getMainLooper());
     protected Player player;
     protected SoundSource[] sources;
@@ -39,6 +39,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private final java.util.List<TextView[]> tabs = new java.util.ArrayList<>(); // {label, underline-holder}
     private final java.util.List<Widgets.Underline> tabUnders = new java.util.ArrayList<>();
     private final java.util.List<String> tabNames = new java.util.ArrayList<>();
+    private CoachView coach; // first-run drag demo until the first real drop
     private MyPresets myPresets; // "나만의 소리" saved on this device (SharedPreferences "mypresets")
     private LinearLayout moreSheet;
     private SoundSource selected;
@@ -353,6 +354,11 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         // Dark (sleep) overlay on top of everything.
         FrameLayout root = new FrameLayout(this);
         root.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        coach = null;
+        if (!player.prefs.getBoolean("coach.done", false)) {
+            coach = new CoachView(this, this, k);
+            root.addView(coach, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         darkText = new TextView(this);
         darkText.setBackgroundColor(Color.BLACK);
         darkText.setTextColor(0x33FFFFFF);
@@ -495,6 +501,21 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         tabs.add(new TextView[] {tl});
         tabUnders.add(under);
         tabNames.add(name);
+    }
+
+    // ── First-run coach ────────────────────────────────────────────────────
+    @Override public Widgets.SoundTile coachTile() {
+        android.graphics.Rect r = new android.graphics.Rect();
+        for (Widgets.SoundTile t : tiles) if (!t.s.enabled && !t.s.locked && t.getGlobalVisibleRect(r) && r.height() > t.getHeight() / 2) return t;
+        return null;
+    }
+    @Override public StageView coachStage() { return stage; }
+    @Override public SoundSource[] coachSources() { return sources; }
+    @Override public boolean coachBlocked() { return dark || stage == null || stage.birdEdit() || stage.isLocked(); }
+
+    @Override public boolean dispatchTouchEvent(android.view.MotionEvent e) {
+        if (coach != null && e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) coach.poke();
+        return super.dispatchTouchEvent(e);
     }
 
     private void storeMyPresets() { player.prefs.edit().putString("mypresets", myPresets.encode()).apply(); }
@@ -709,6 +730,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     @Override public void onStageChanged() { player.save(); refresh(); }
 
     @Override public void onSoundDropped(SoundSource s, boolean on) {
+        if (on && coach != null) { coach.finish(); coach = null; player.prefs.edit().putBoolean("coach.done", true).apply(); }
         setSound(s, on);
         select(s);
     }

@@ -112,7 +112,7 @@ final class Widgets {
             t.setTextAlign(Paint.Align.CENTER);
         }
 
-        // Drag a tile sideways (or long-press) to carry it onto the stage; a plain tap still toggles.
+        // Long-press a tile to lift it and carry it onto the stage; a plain tap only selects.
         private float downX, downY;
         private boolean carried;
 
@@ -148,17 +148,6 @@ final class Widgets {
                 case MotionEvent.ACTION_DOWN:
                     downX = e.getX(); downY = e.getY(); carried = false;
                     break;
-                case MotionEvent.ACTION_MOVE: {
-                    float dx = e.getX() - downX, dy = e.getY() - downY;
-                    int slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
-                    if (!carried && Math.hypot(dx, dy) > slop && Math.abs(dx) > Math.abs(dy) * 0.8f) {
-                        startCarry();
-                        cancelLongPress();
-                        setPressed(false);
-                        return true;
-                    }
-                    break;
-                }
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     if (carried) { carried = false; cancelLongPress(); setPressed(false); return true; }

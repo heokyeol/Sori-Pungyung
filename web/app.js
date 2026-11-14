@@ -412,16 +412,19 @@ function draw(t) {
     const a = s.anim, target = s.on ? 1 : 0;
     if (Math.abs(a.shown - target) > 0.001) { a.shown += (target - a.shown) * Math.min(1, dt * 10); busy = true; }
     if (a.pop > 0.001) { a.pop *= Math.exp(-dt * 6); busy = true; } else a.pop = 0;
+    const lf = drag && drag.s === s && drag.lifted ? Math.min(1, Math.max(0, (t - drag.lt) / 140)) : 0; // 0→1: the dot popping loose
+    if (lf > 0 && lf < 1) busy = true;
     const pop = 1 + 0.3 * a.pop * Math.cos(a.pop * 9), px = CX + s.x * R, py = CY + s.y * R;
     if (a.shown < 0.03) continue; // off sounds are not drawn on the stage (they fade/shrink out while turning off)
     {
       const fade = Math.min(1, a.shown);
-      const r = (28 + 20 * s.volume) * U * pop * (0.6 + 0.4 * fade) * (drag && drag.s === s ? 1.12 : 1), offDrag = !!(drag && drag.s === s && drag.off);
+      const r = (28 + 20 * s.volume) * U * pop * (0.6 + 0.4 * fade) * (1 + 0.15 * lf), offDrag = !!(drag && drag.s === s && drag.off);
       g2.globalAlpha = (offDrag ? 0.55 : 1) * fade; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.fill();
       if (offDrag) g2.setLineDash([5, 5]);
       g2.globalAlpha = (offDrag ? 0.5 : 0.94) * fade; g2.lineWidth = 1.5; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.stroke();
       g2.setLineDash([]);
       if (s === selected && !offDrag) { g2.globalAlpha = 0.6 * fade; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
+      if (lf > 0 && !offDrag) { g2.globalAlpha = 0.5 * lf * fade; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 13 * U, 0, 7); g2.stroke(); }
       drawIcon(g2, s.id, px, py, r * 0.86, (offDrag ? 0.35 : 0.92) * fade);
       const f1 = Math.max(11, 17 * U), f2 = Math.max(9, 12 * U);
       if (offDrag) {
@@ -463,7 +466,8 @@ function draw(t) {
   g2.globalAlpha = 1;
   if (busy) requestDraw(); else lastFrame = 0;
 }
-let birdEdit = false, perchDrag = null, pressTimer = null, longPressed = false;
+let birdEdit = false, perchDrag = null, pressTimer = null;
+const HOLD_MS = 400; // press-and-hold time before a dot or a tile lifts off
 function perchXY(id) {
   const bird = SOUNDS.find((x) => x.flock), [ox, oy] = S.perch[id] || [0, 0];
   let x = bird.x + ox, y = bird.y + oy; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
@@ -551,9 +555,10 @@ cv.addEventListener("pointerdown", (e) => {
     return;
   }
   const s = nearest(x, y);
-  longPressed = false; clearTimeout(pressTimer);
-  if (s && s.flock) pressTimer = setTimeout(() => { if (drag && !drag.moved) { longPressed = true; setBirdEdit(true); buzz(30); } }, 550);
-  drag = { s, x0: x, y0: y, moved: false, tx: x, ty: y, sx: s ? s.x : 0, sy: s ? s.y : 0, off: false };
+  clearTimeout(pressTimer);
+  // A dot never follows the finger right away: press and hold ~400 ms without moving and it lifts off, then it follows.
+  const mine = drag = { s, x0: x, y0: y, moved: false, tx: x, ty: y, sx: s ? s.x : 0, sy: s ? s.y : 0, off: false, lifted: false, lt: 0, dead: false };
+  if (s) pressTimer = setTimeout(() => { if (drag === mine && !mine.dead && !mine.moved) { mine.lifted = true; mine.lt = performance.now(); buzz(20); requestDraw(); } }, HOLD_MS);
   cv.setPointerCapture(e.pointerId);
   drop(x, y, s ? s.color : "#ffffff", s ? 1 : 0.6); buzz(8);
 });
@@ -568,9 +573,13 @@ cv.addEventListener("pointermove", (e) => {
     S.perch[perchDrag.id] = [nx - bird.x, ny - bird.y]; voices.get("birds")?.move(0.006); requestDraw();
     return;
   }
-  if (!drag || !drag.s) return;
+  if (!drag || !drag.s || drag.dead) return;
   const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  if (Math.hypot(x - drag.x0, y - drag.y0) > 8) { drag.moved = true; clearTimeout(pressTimer); }
+  if (!drag.lifted) { // moved before the hold finished: a plain swipe, the dot stays where it is
+    if (Math.hypot(x - drag.x0, y - drag.y0) > 8) { drag.dead = true; clearTimeout(pressTimer); }
+    return;
+  }
+  if (Math.hypot(x - drag.x0, y - drag.y0) > 8) drag.moved = true;
   if (!drag.moved) return;
   let nx = (x - CX) / R, ny = (y - CY) / R; const d = Math.hypot(nx, ny); if (d > 1) { nx /= d; ny /= d; }
   // Pulled far outside the ring: release turns it off (only for a sound that is on).
@@ -584,11 +593,10 @@ cv.addEventListener("pointerup", (e) => {
   clearTimeout(pressTimer);
   if (birdEdit) {
     if (perchDrag && perchDrag.id) { if (!perchDrag.moved) { S.birdsOn[perchDrag.id] = !S.birdsOn[perchDrag.id]; buzz(10); } save(); }
-    else if (!longPressed) setBirdEdit(false);
-    perchDrag = null; longPressed = false; requestDraw();
+    else setBirdEdit(false);
+    perchDrag = null; requestDraw();
     return;
   }
-  if (longPressed) { drag = null; longPressed = false; return; }
   if (!drag) return;
   const s = drag.s;
   if (s && drag.off) { // dragged out of the stage: off, and the dot goes back where it started
@@ -692,7 +700,7 @@ function drawTile(t) {
   t.vol.textContent = s.on ? Math.round(s.volume * 100) : "";
 }
 let tiles = [];
-// Drag a tile onto the stage: horizontal move (> 8 px) or a 450 ms press starts it, a vertical move is just scrolling.
+// Drag a tile onto the stage: only a ~400 ms press-and-hold lifts it; moving before that is plain scrolling (and cancels the hold).
 let tdrag = null, tdSuppress = 0;
 let tdGhost = null;
 function tdPoint(cx, cy) {
@@ -737,7 +745,7 @@ function tileDrag(el, s) {
     tdrag = { s, pid: e.pointerId, x0: e.clientX, y0: e.clientY, active: false, dead: false, cancelled: false, over: null };
     const mine = tdrag;
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
-    mine.timer = setTimeout(() => { if (tdrag === mine && !mine.dead && !mine.active) tdStart({ clientX: mine.lx ?? mine.x0, clientY: mine.ly ?? mine.y0 }); }, 450);
+    mine.timer = setTimeout(() => { if (tdrag === mine && !mine.dead && !mine.active) tdStart({ clientX: mine.lx ?? mine.x0, clientY: mine.ly ?? mine.y0 }); }, HOLD_MS);
   });
   el.addEventListener("pointermove", (e) => {
     const d = tdrag; if (!d || d.s !== s || e.pointerId !== d.pid) return;
@@ -745,10 +753,7 @@ function tileDrag(el, s) {
     if (d.active) return tdUpdate(e);
     if (d.dead) return;
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
-    if (Math.hypot(dx, dy) > 8) {
-      if (Math.abs(dx) > Math.abs(dy) * 0.8) tdStart(e);
-      else { d.dead = true; clearTimeout(d.timer); } // vertical: the panel is scrolling
-    }
+    if (Math.hypot(dx, dy) > 8) { d.dead = true; clearTimeout(d.timer); } // moved before the hold: the panel / strip is scrolling
   });
   el.addEventListener("pointerup", (e) => {
     const d = tdrag; if (!d || d.s !== s || e.pointerId !== d.pid) return;
@@ -758,6 +763,7 @@ function tileDrag(el, s) {
     const p = tdPoint(e.clientX, e.clientY);
     tdFinish();
     if (!p) return;
+    coachDone();
     s.x = p.nx; s.y = p.ny; selected = s;
     if (!s.on) toggle(s); // same path as a tap: audio, pop, ripple, save
     else { s.anim.pop = 1; voices.get(s.id)?.move(0.006); drop(CX + s.x * R, CY + s.y * R, s.color, 1.3); buzz(15); save(); refresh(); }
@@ -1085,6 +1091,102 @@ $("placesClose").onclick = () => ($("placesView").hidden = true);
 $("tabRadar").onclick = openRadar;
 $("tabMap").onclick = openMap;
 $("placesFilter").onclick = () => { showAll = !showAll; drawPlaces(); };
+
+// ── First-run coach: a ghost finger shows "press, hold, carry a tile onto the stage" until the first real drop ──
+const COACH_KEY = "sd.coach.done";
+let coach = null;
+function coachDone() {
+  if (!coach) return;
+  try { localStorage.setItem(COACH_KEY, "1"); } catch (e) {}
+  cancelAnimationFrame(coach.raf); coach.cv.remove(); coach.st.done = true; coach.st.visible = false; coach.st.ghost = null; coach = null;
+}
+(function coachInit() {
+  try { if (localStorage.getItem(COACH_KEY)) return; } catch (e) {}
+  const T = { press: 600, carry: 1300, release: 450, pause: 1200 }; T.total = T.press + T.carry + T.release + T.pause;
+  const ccv = document.createElement("canvas"), cx = ccv.getContext("2d");
+  ccv.id = "coach"; ccv.setAttribute("aria-hidden", "true");
+  document.body.append(ccv);
+  const st = window.__coach = { done: false, visible: false, textShown: false, phase: "wait", ghost: null, finger: null, loops: 0, tile: null, target: null };
+  let showAt = performance.now() + 800, loopT0 = 0, tile = null, tgt = null, cw = 0, ch = 0, ck = 1;
+  const down = new Set(), reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const quiet = (ms) => { showAt = performance.now() + ms; loopT0 = 0; };
+  addEventListener("pointerdown", (e) => { down.add(e.pointerId); quiet(6000); }, true);
+  addEventListener("pointermove", (e) => { if (e.buttons) quiet(6000); }, true);
+  for (const n of ["pointerup", "pointercancel"]) addEventListener(n, (e) => { down.delete(e.pointerId); quiet(6000); }, true);
+  addEventListener("blur", () => down.clear());
+  const blocked = () => birdEdit || down.size > 0 || !!tdrag || document.hidden || ["darkOverlay", "placesView", "modal", "moreSheet"].some((id) => !$(id).hidden);
+  const clipRects = () => { const a = [{ left: 0, top: 0, right: innerWidth, bottom: innerHeight }, $("panel").getBoundingClientRect(), $("rows").getBoundingClientRect()]; return a; };
+  function tileVisible(t, frac) {
+    const r = t.c.getBoundingClientRect(); if (!r.width || !r.height) return false;
+    let L = r.left, Tp = r.top, Rr = r.right, B = r.bottom;
+    for (const c of clipRects()) { L = Math.max(L, c.left); Tp = Math.max(Tp, c.top); Rr = Math.min(Rr, c.right); B = Math.min(B, c.bottom); }
+    return Rr > L && B > Tp && ((Rr - L) * (B - Tp)) / (r.width * r.height) >= frac;
+  }
+  function pickTarget() {
+    const ons = SOUNDS.filter((s) => !s.locked && s.on); let best = null, bd = -1;
+    for (const [nx, ny] of [[-0.45, -0.35], [0.45, -0.35], [-0.45, 0.4], [0.45, 0.4], [0, -0.55]]) {
+      const d = ons.length ? Math.min(...ons.map((o) => Math.hypot(o.x - nx, o.y - ny))) : 9;
+      if (d > bd) { bd = d; best = [nx, ny]; }
+    }
+    return best;
+  }
+  const FR = 36; // fingertip ring radius: just outside the 56 px ghost
+  const ease = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2), easeOut = (u) => 1 - (1 - u) * (1 - u);
+  const ring = (x, y, r, a, lw = 1.5) => { cx.globalAlpha = a; cx.lineWidth = lw; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.stroke(); };
+  function frame(now) {
+    coach && (coach.raf = requestAnimationFrame(frame));
+    if (ccv.width !== Math.round(innerWidth * (ck = devicePixelRatio || 1)) || ccv.height !== Math.round(innerHeight * ck)) { ccv.width = Math.round(innerWidth * ck); ccv.height = Math.round(innerHeight * ck); }
+    cx.setTransform(ck, 0, 0, ck, 0, 0); cx.clearRect(0, 0, innerWidth, innerHeight);
+    st.visible = false; st.textShown = false; st.ghost = null; st.finger = null;
+    if (blocked() || now < showAt) { st.phase = "idle"; loopT0 = 0; return; }
+    st.visible = true;
+    // hint line at the bottom of the stage (same look as the bird-edit hint)
+    const sr = cv.getBoundingClientRect();
+    cx.globalAlpha = 1; cx.fillStyle = MUTED; cx.font = `${Math.max(11, 14 * U)}px sans-serif`; cx.textAlign = "left"; // left, so it never sits on the "뒤" label
+    cx.fillText("소리를 무대로 끌어 놓아 보세요", $("brand").getBoundingClientRect().left + (parseFloat(getComputedStyle($("brand")).paddingLeft) || 0), sr.bottom - 14); st.textShown = true;
+    if (reduce.matches) { st.phase = "text"; return; }
+    if (!loopT0) { // start of a loop: choose tile and target again (layout may have changed)
+      tile = tiles.find((t) => !t.s.locked && !t.s.on && tileVisible(t, 0.8)) || null;
+      if (!tile) { st.phase = "no-tile"; return; }
+      tgt = pickTarget(); loopT0 = now; st.loops++; st.tile = tile.s.id; st.target = tgt;
+    }
+    const e = now - loopT0;
+    if (e >= T.total || !tileVisible(tile, 0.5)) { loopT0 = 0; st.phase = "pause"; return; }
+    const tr = tile.c.getBoundingClientRect(), fx = tr.left + tr.width / 2, fy = tr.top + tr.height / 2;
+    const tx = sr.left + CX + tgt[0] * R, ty = sr.top + CY + tgt[1] * R;
+    cx.strokeStyle = INK; cx.fillStyle = "#111";
+    const ghost = (x, y, sc, a) => {
+      cx.save(); cx.translate(x, y); cx.scale(sc, sc);
+      cx.globalAlpha = Math.min(1, a * 1.6); cx.beginPath(); cx.arc(0, 0, 28, 0, 7); cx.fill();
+      ring(0, 0, 26, 0.55 * a); drawIcon(cx, tile.s.id, 0, 0, 22, 0.55 * a); cx.restore();
+    };
+    if (e < T.press) { // press and hold: the ring shrinks, then the ghost pops up slightly bigger
+      st.phase = "press";
+      const fa = Math.min(1, e / 120), fs = 1 - 0.15 * Math.min(1, e / 300);
+      ring(fx, fy, FR * fs, 0.7 * fa);
+      if (e > 450) { const u = (e - 450) / 150; ghost(fx, fy, 0.6 + 0.55 * easeOut(u), Math.min(1, u)); st.ghost = { x: fx, y: fy }; }
+      st.finger = { x: fx, y: fy };
+    } else if (e < T.press + T.carry) {
+      st.phase = "carry";
+      const ce = e - T.press, u = ease(ce / T.carry), dx = tx - fx, dy = ty - fy, dist = Math.hypot(dx, dy) || 1;
+      const bulge = Math.sin(Math.PI * u) * 0.12 * dist;
+      const x = fx + dx * u + (-dy / dist) * bulge, y = fy + dy * u + (dx / dist) * bulge;
+      const k = Math.min(1, ce / 300);
+      ring(x, y, FR * (0.85 + 0.15 * k), 0.7);
+      ghost(x, y, 1.15 - 0.15 * k, 1);
+      st.ghost = { x, y }; st.finger = { x, y };
+    } else if (e < T.press + T.carry + T.release) {
+      st.phase = "release";
+      const u = (e - T.press - T.carry) / T.release, f = 1 - u;
+      ring(tx, ty, FR, 0.7 * f);
+      ghost(tx, ty, 1, f);
+      ring(tx, ty, 14 + 40 * easeOut(u), 0.6 * f, 1.3);
+      st.ghost = { x: tx, y: ty }; st.finger = { x: tx, y: ty };
+    } else st.phase = "pause";
+    cx.globalAlpha = 1;
+  }
+  coach = { cv: ccv, st, raf: requestAnimationFrame(frame) };
+})();
 
 // ── Start ─────────────────────────────────────────────────────────────────
 renderMine(); rows(); resize();
