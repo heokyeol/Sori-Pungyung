@@ -4,12 +4,10 @@
 
 ## 처음이라면
 1. [docs/GITHUB_GUIDE.md](docs/GITHUB_GUIDE.md) — GitHub 협업 방법 (0단계부터 따라 하기)
-2. [CLAUDE.md](CLAUDE.md) — 두 사람의 Claude 에이전트가 공통으로 따르는 규칙
-3. [docs/pleos-notes.md](docs/pleos-notes.md) — 공모전/Pleos 관련 자료 정리
+2. [docs/pleos-notes.md](docs/pleos-notes.md) — 공모전/Pleos 관련 자료 정리
 
 ## 폴더 구조
 ```
-CLAUDE.md                    팀 공용 에이전트 규칙
 .claude/settings.json        위험한 git 명령 실행 전 확인받도록 하는 공용 설정
 .github/
   pull_request_template.md   PR 양식
