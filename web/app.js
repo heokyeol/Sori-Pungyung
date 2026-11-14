@@ -111,13 +111,12 @@ const CATS = [
 const SLEEP = [0, 15, 30, 60, 90], FADE_MS = 10 * 60e3;
 function defaultPerch(i) { const a = (Math.PI * 2 * i) / 12 - Math.PI / 2; return [Math.cos(a) * 0.3, Math.sin(a) * 0.3]; }
 const calledAt = {}; // species id → performance.now() of its last call (name label on the stage)
-const MOTION = ["멈춤", "🪐 행성 궤도", "🔄 360° 회전"];
 const $ = (id) => document.getElementById(id);
 
 // ── State (persisted) ─────────────────────────────────────────────────────
 const saved = JSON.parse(localStorage.getItem("sd:state") || "{}");
 const S = {
-  master: 0.8, motion: saved.motion ?? 0, birdAuto: saved.birdAuto ?? true,
+  master: 0.8, motion: saved.motion ? 1 : 0, // 0 = 멈춤, 1 = 360° 회전 (an old saved orbit value loads as 360° 회전) birdAuto: saved.birdAuto ?? true,
   birdsOn: saved.birdsOn ?? Object.fromEntries(BIRDS.map((b) => [b.id, true])),
   unlocked: saved.unlocked ?? {}, spots: saved.spots ?? {}, spotNote: saved.spotNote ?? {},
   regions: saved.regions ?? {}, stamps: saved.stamps ?? {},
@@ -204,6 +203,14 @@ class LoopVoice {
   }
   volume(v) { this.out.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }
   move(smooth) { place(this.pan, this.s.x, this.s.y, smooth); }
+  // Level tap for the mood light: a side branch after this voice's own gain and panner (not connected onward).
+  tap() {
+    if (!this.an) { this.an = ctx.createAnalyser(); this.an.fftSize = 256; this.buf32 = new Float32Array(256); this.pan.connect(this.an); }
+    this.an.getFloatTimeDomainData(this.buf32);
+    let sum = 0; for (let i = 0; i < 256; i++) sum += this.buf32[i] * this.buf32[i];
+    return Math.sqrt(sum / 256);
+  }
+  untap() { if (this.an) { try { this.pan.disconnect(this.an); } catch (e) {} this.an = null; } }
   stop() {
     this.stopped = true; clearTimeout(this.timer);
     this.out.gain.setTargetAtTime(0, ctx.currentTime, 0.03);
@@ -233,7 +240,7 @@ class FlockVoice {
     buffer(`audio/birds/${files[Math.floor(Math.random() * files.length)]}`).then((buf) => {
       if (this.stopped) return;
       const call = { id: b.id, jx: (Math.random() - 0.5) * 0.04, jy: (Math.random() - 0.5) * 0.04 };
-      calledAt[b.id] = performance.now(); requestDraw();
+      calledAt[b.id] = performance.now(); requestDraw(); moodBirdCall(b.id);
       const src = ctx.createBufferSource(), g = ctx.createGain(), p = panner();
       call.p = p;
       src.buffer = buf; src.playbackRate.value = 0.97 + Math.random() * 0.06;
@@ -306,7 +313,7 @@ setInterval(() => {
   }
 }, 1000);
 
-// ── Motion (planet orbits / 360° turn) ───────────────────────────────────
+// ── Motion (360° turn) ───────────────────────────────────
 let lastMove = performance.now(), moveSave = 0;
 setInterval(() => {
   const now = performance.now(), dt = Math.min(0.5, (now - lastMove) / 1000);
@@ -315,11 +322,10 @@ setInterval(() => {
   for (const s of SOUNDS) {
     const r = Math.hypot(s.x, s.y);
     if (r < 1e-4) continue;
-    const period = S.motion === 1 ? 20 + 80 * Math.min(1, r) : 60;
-    const a = (2 * Math.PI * dt) / period, c = Math.cos(a), sn = Math.sin(a);
+    const a = (2 * Math.PI * dt) / 60, c = Math.cos(a), sn = Math.sin(a);
     [s.x, s.y] = [s.x * c - s.y * sn, s.x * sn + s.y * c];
   }
-  voices.forEach((v) => v.move(0.05)); // orbit steps every 50 ms: glide between them
+  voices.forEach((v) => v.move(0.05)); // turn steps every 50 ms: glide between them
   if ((moveSave += dt) > 5) { moveSave = 0; save(); }
   requestDraw();
 }, 50);
@@ -828,7 +834,7 @@ function refresh() {
   refreshLight();
   const left = Math.ceil(sleepLeft() / 60e3);
   $("sleep").querySelector("b").textContent = sleepMin ? `${left}분 남음` : "끔";
-  $("motion").querySelector("b").textContent = ["멈춤", "행성 궤도", "360° 회전"][S.motion];
+  $("motion").querySelector("b").textContent = ["멈춤", "360° 회전"][S.motion];
   $("dex").textContent = `소리 도감 (${Object.keys(S.regions).length + Object.keys(S.stamps).length + Object.keys(S.spots).length}/${REGIONS.length + (places ? places.length : 25) + SPOTS.length})`;
   $("darkText").textContent = "화면을 누르면 돌아와요" + (sleepMin ? `\n수면 타이머 ${left}분 남음` : "");
 }
@@ -837,7 +843,7 @@ tickClock(); setInterval(tickClock, 20000);
 $("more").onclick = () => ($("moreSheet").hidden = false);
 $("moreClose").onclick = () => ($("moreSheet").hidden = true);
 $("moreSheet").onclick = (e) => { if (e.target.id === "moreSheet") $("moreSheet").hidden = true; };
-for (const id of ["places", "dex", "reset", "credits"]) $(id).addEventListener("click", () => ($("moreSheet").hidden = true));
+for (const id of ["places", "dex", "reset", "credits", "darkOnly"]) $(id).addEventListener("click", () => ($("moreSheet").hidden = true));
 $("play").onclick = () => (playing ? stop() : play());
 for (const b of document.querySelectorAll(".preset[data-preset]")) b.onclick = () => {
   const ids = b.dataset.preset.split(",");
@@ -845,7 +851,7 @@ for (const b of document.querySelectorAll(".preset[data-preset]")) b.onclick = (
   if (!playing) play(); else syncVoices();
   save(); refresh(); requestDraw();
 };
-$("motion").onclick = () => { S.motion = (S.motion + 1) % 3; save(); refresh(); requestDraw(); };
+$("motion").onclick = () => { S.motion = S.motion ? 0 : 1; save(); refresh(); requestDraw(); };
 $("sleep").onclick = () => {
   sleepMin = SLEEP[(SLEEP.indexOf(sleepMin) + 1) % SLEEP.length];
   sleepEnd = sleepMin ? Date.now() + sleepMin * 60e3 : 0;
@@ -854,11 +860,126 @@ $("sleep").onclick = () => {
 };
 $("reset").onclick = () => { for (const s of SOUNDS) { s.x = s.hx; s.y = s.hy; } voices.forEach((v) => v.move()); save(); requestDraw(); };
 let wakeLock = null;
-$("dark").onclick = async () => {
-  $("darkOverlay").hidden = false;
-  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (e) {}
+const lockScreen = async () => { try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (e) {} };
+const unlockScreen = () => { wakeLock?.release?.(); wakeLock = null; };
+// Plain black screen (kept under 더보기 → 완전히 어둡게)
+$("darkOnly").onclick = () => { $("darkOverlay").hidden = false; lockScreen(); };
+$("darkOverlay").onclick = () => { $("darkOverlay").hidden = true; unlockScreen(); };
+
+// ── Mood light (무드등): thin rings ripple out from every sound that is on, driven by its live loudness ──
+const MOOD_STYLES = {
+  FINE: { interval: 0.14, speed: 0.22, maxR: 0.22, stroke: 0.9, jitter: 0.5 },
+  SWELL: { interval: 2.6, speed: 0.12, maxR: 0.95, stroke: 1.4, jitter: 0.15 },
+  AIRY: { interval: 1.8, speed: 0.16, maxR: 0.8, stroke: 1.0, jitter: 0.3 },
+  CRACKLE: { interval: 0.45, speed: 0.08, maxR: 0.25, stroke: 1.0, jitter: 0.9 },
+  STORM: { interval: 4.0, speed: 0.35, maxR: 1.2, stroke: 1.6, jitter: 0.4 },
+  MEDIUM: { interval: 1.1, speed: 0.14, maxR: 0.5, stroke: 1.0, jitter: 0.3 },
+  CALL: { interval: 1, speed: 0.30, maxR: 0.18, stroke: 1.0, jitter: 0 },
 };
-$("darkOverlay").onclick = () => { $("darkOverlay").hidden = true; wakeLock?.release?.(); wakeLock = null; };
+const MOOD_MAP = [
+  ["STORM", ["thunder"]],
+  ["FINE", ["rain", "jeonju", "valley", "danyang"]],
+  ["SWELL", ["waves", "udo", "yeosu", "yangyang", "haeundae", "taean", "harbor"]],
+  ["AIRY", ["wind", "jeju", "damyang", "andong", "naejangsan", "mindungsan", "boseong", "daegwallyeong", "cmb", "pad", "saturn", "jupiter", "airport", "station"]],
+  ["CRACKLE", ["fire", "maisan", "hwacheon"]],
+];
+const moodStyleOf = (id) => (MOOD_MAP.find(([, keys]) => keys.some((k) => id.includes(k))) || ["MEDIUM"])[0];
+const mood = { open: false, rings: [], fade: 0, raf: 0, last: 0, cv: $("moodCanvas"), cx: null, w: 0, h: 0, dpr: 1, spawned: {}, levels: {}, reduce: matchMedia("(prefers-reduced-motion: reduce)") };
+mood.cx = mood.cv.getContext("2d");
+// small read-only debug view (used by the browser tests)
+window.__mood = { get open() { return mood.open; }, get rings() { return mood.rings.length; }, get fade() { return mood.fade; }, get ringList() { return mood.rings.map((r) => ({ id: r.id, x: r.x, y: r.y, strength: r.strength, age: r.age })); }, get levels() { return mood.levels; }, get spawned() { return mood.spawned; }, get size() { return Math.min(mood.w, mood.h) * 0.45; }, get voices() { return voices.size; } };
+const moodSize = () => Math.min(mood.w, mood.h) * 0.45;
+function moodSpawn(id, style, strength, x, y, delay = 0) {
+  const st = (mood.spawned[id] ||= { n: 0, sum: 0 });
+  st.n++; st.sum += strength;
+  mood.rings.push({ id, style, strength, x, y, age: -delay });
+  if (mood.rings.length > 160) mood.rings.shift();
+}
+function moodGate(m, now) { // reduced motion: at most one ring per sound per 2 s
+  if (mood.reduce.matches && now - (m.lastSpawn ?? -1e9) < 2000) return false;
+  m.lastSpawn = now; return true;
+}
+function moodBirdCall(id) {
+  if (!mood.open || !S.birdsOn[id]) return;
+  const bird = SOUNDS.find((x) => x.flock); if (!bird || bird.locked || !bird.on) return;
+  const m = (bird.mood ||= {}); if (!moodGate(m, performance.now())) return;
+  const [px, py] = S.perch[id] || [0, 0], sz = moodSize(), x = mood.w / 2 + (bird.x + px) * sz, y = mood.h / 2 + (bird.y + py) * sz;
+  moodSpawn("birds", "CALL", 0.9, x, y); moodSpawn("birds", "CALL", 0.6, x, y, 0.18);
+}
+function moodResize() {
+  mood.dpr = window.devicePixelRatio || 1;
+  mood.w = innerWidth; mood.h = innerHeight;
+  mood.cv.width = Math.round(mood.w * mood.dpr); mood.cv.height = Math.round(mood.h * mood.dpr);
+}
+function moodStep(dt, now) {
+  const sz = moodSize();
+  for (const s of SOUNDS) {
+    if (s.flock) continue;
+    const v = voices.get(s.id), m = (s.mood ||= { level: 0, peak: 0, slow: 0, acc: 0, next: 0 });
+    if (!(v && v.tap && !s.locked && s.on)) { m.level = 0; m.acc = 0; delete mood.levels[s.id]; continue; }
+    const rms = v.tap();
+    m.level = rms > m.level ? m.level + (rms - m.level) * 0.6 : m.level * 0.85 + rms * 0.15;
+    mood.levels[s.id] = m.level;
+    m.peak = Math.max(m.level, m.peak * (1 - dt * 0.15));
+    const norm = m.peak > 1e-4 ? Math.min(1, m.level / m.peak) : 0;
+    const loudJump = m.slow > 1e-4 && m.level > m.slow * 3 && m.level > 0.02;
+    m.slow += (m.level - m.slow) * Math.min(1, dt * 0.8);
+    if (m.level < 1e-4) { m.acc = 0; continue; }
+    const style = moodStyleOf(s.id), P = MOOD_STYLES[style], x = mood.w / 2 + s.x * sz, y = mood.h / 2 + s.y * sz;
+    if (!m.next) m.next = P.interval * (1 + P.jitter * (Math.random() - 0.5));
+    m.acc += dt * (0.4 + 1.2 * norm);
+    if (m.acc >= m.next && moodGate(m, now)) {
+      moodSpawn(s.id, style, s.volume * (0.35 + 0.65 * norm), x, y);
+      m.acc = 0; m.next = P.interval * (1 + P.jitter * (Math.random() - 0.5));
+    }
+    if (style === "STORM" && loudJump && moodGate(m, now)) moodSpawn(s.id, style, 1, x, y);
+  }
+}
+function moodDraw() {
+  const c = mood.cx, sz = moodSize();
+  c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = "#000"; c.fillRect(0, 0, mood.cv.width, mood.cv.height);
+  c.setTransform(mood.dpr, 0, 0, mood.dpr, 0, 0); c.strokeStyle = INK;
+  for (const r of mood.rings) {
+    if (r.age < 0) continue;
+    const P = MOOD_STYLES[r.style], rad = 6 + P.speed * sz * r.age, life = 1 - rad / (P.maxR * sz);
+    if (life <= 0) continue;
+    c.globalAlpha = 0.38 * r.strength * life * Math.sqrt(life) * mood.fade; c.lineWidth = P.stroke;
+    c.beginPath(); c.arc(r.x, r.y, rad, 0, 7); c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+function moodFrame(t) {
+  if (!mood.open) return;
+  mood.raf = requestAnimationFrame(moodFrame);
+  if (t - mood.last < 28) return; // ~30 fps
+  const dt = Math.min(0.1, mood.last ? (t - mood.last) / 1000 : 0.033); mood.last = t;
+  mood.fade = playing ? Math.min(1, mood.fade + dt / 2) : Math.max(0, mood.fade - dt / 20);
+  const sz = moodSize();
+  mood.rings = mood.rings.filter((r) => { r.age += dt; const P = MOOD_STYLES[r.style]; return 6 + P.speed * sz * r.age < P.maxR * sz; });
+  moodStep(dt, performance.now());
+  moodDraw();
+}
+function openMood() {
+  mood.open = true; mood.rings = []; mood.fade = 0; mood.last = 0; mood.spawned = {}; mood.levels = {};
+  for (const s of SOUNDS) s.mood = null;
+  $("moodOverlay").hidden = false; moodResize();
+  const h = $("moodHint"); h.style.animation = "none"; void h.offsetWidth; h.style.animation = "";
+  $("dark").querySelector("b").textContent = "무드등 켜짐";
+  mood.raf = requestAnimationFrame(moodFrame);
+  lockScreen();
+}
+function closeMood() {
+  if (!mood.open) return;
+  mood.open = false; cancelAnimationFrame(mood.raf);
+  voices.forEach((v) => v.untap && v.untap());
+  $("moodOverlay").hidden = true; mood.rings = [];
+  $("dark").querySelector("b").textContent = "무드등";
+  unlockScreen();
+}
+$("dark").onclick = openMood;
+$("moodOverlay").onclick = closeMood;
+addEventListener("resize", () => mood.open && moodResize());
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mood.open) closeMood(); });
 
 // Water-drop ripple + press feel on every button
 document.addEventListener("pointerdown", (e) => {
@@ -1107,7 +1228,7 @@ function coachDone() {
   addEventListener("pointermove", (e) => { if (e.buttons) quiet(6000); }, true);
   for (const n of ["pointerup", "pointercancel"]) addEventListener(n, (e) => { down.delete(e.pointerId); quiet(6000); }, true);
   addEventListener("blur", () => down.clear());
-  const blocked = () => birdEdit || down.size > 0 || !!tdrag || document.hidden || ["darkOverlay", "placesView", "modal", "moreSheet"].some((id) => !$(id).hidden);
+  const blocked = () => birdEdit || down.size > 0 || !!tdrag || document.hidden || ["darkOverlay", "moodOverlay", "placesView", "modal", "moreSheet"].some((id) => !$(id).hidden);
   const clipRects = () => { const a = [{ left: 0, top: 0, right: innerWidth, bottom: innerHeight }, $("panel").getBoundingClientRect(), $("rows").getBoundingClientRect()]; return a; };
   function tileVisible(t, frac) {
     const r = t.c.getBoundingClientRect(); if (!r.width || !r.height) return false;

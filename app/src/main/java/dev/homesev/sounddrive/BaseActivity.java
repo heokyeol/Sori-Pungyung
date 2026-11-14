@@ -25,7 +25,7 @@ import java.util.Locale;
  * Screen shared by the Pleos and Galaxy builds: stage, sound rows, presets, bird species,
  * sleep timer and the dark (sleep) screen. Each build's MainActivity adds its extras.
  */
-abstract class BaseActivity extends Activity implements StageView.Listener, Player.Listener, CoachView.Host {
+abstract class BaseActivity extends Activity implements StageView.Listener, Player.Listener, CoachView.Host, MoodView.Host {
     protected final Handler main = new Handler(Looper.getMainLooper());
     protected Player player;
     protected SoundSource[] sources;
@@ -47,6 +47,8 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     private View darkOverlay;
     private TextView darkText;
     private boolean dark, darkKeepMood;
+    private boolean moodScreen; // dark screen showing the sound-ripple mood light instead of plain black
+    private MoodView moodView;
 
     /** Car head unit (larger text, landscape) vs phone. */
     protected abstract boolean isCar();
@@ -315,7 +317,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         LinearLayout cells = new LinearLayout(this);
         motionValue = cell(cells, "움직임", v -> { int m = player.cycleMotion(); stage.setAnimating(m != Mixer.MOTION_NONE); }, false);
         sleepValue = cell(cells, "수면 타이머", v -> player.cycleSleep(), true);
-        screenValue = cell(cells, "화면", v -> setDark(true, darkKeepsMoodDefault()), true);
+        screenValue = cell(cells, "화면", v -> setMoodScreen(true), true);
         panel.addView(cells, matchWrap(px(4 * k)));
 
         // "⋯" sheet: build-specific switches and the less frequent actions
@@ -356,7 +358,12 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         darkText.setOnClickListener(v -> setDark(false, false));
         darkOverlay = darkText;
         root.addView(darkOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        darkOverlay.setVisibility(dark ? View.VISIBLE : View.GONE);
+        moodView = new MoodView(this, this);
+        moodView.setOnClickListener(v -> setDark(false, false));
+        root.addView(moodView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        darkOverlay.setVisibility(dark && !moodScreen ? View.VISIBLE : View.GONE);
+        moodView.setVisibility(dark && moodScreen ? View.VISIBLE : View.GONE);
+        if (dark && moodScreen) moodView.start();
         setContentView(root);
         main.removeCallbacks(clock);
         main.post(clock);
@@ -499,6 +506,8 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         return null;
     }
     @Override public StageView coachStage() { return stage; }
+    @Override public SoundSource[] moodSources() { return sources; }
+    @Override public boolean moodFading() { return player.sleepEnded() || !player.wantPlay(); }
     @Override public SoundSource[] coachSources() { return sources; }
     @Override public boolean coachBlocked() { return dark || stage == null || stage.birdEdit() || stage.isLocked(); }
 
@@ -550,12 +559,23 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         del.setOnClickListener(v -> { myPresets.list.remove(p); storeMyPresets(); sheet.dismiss(); buildUi(); shortToast("지웠어요"); });
     }
 
+    /** Mood light: the screen goes dark and shows rings rippling from each sound, in time with it. */
+    protected void setMoodScreen(boolean on) {
+        moodScreen = on;
+        setDark(on, on && darkKeepsMoodDefault());
+    }
+
     protected void setDark(boolean on, boolean keepMood) {
+        if (!on) moodScreen = false;
         dark = on;
         darkKeepMood = on && keepMood;
-        darkOverlay.setVisibility(on ? View.VISIBLE : View.GONE);
+        darkOverlay.setVisibility(on && !moodScreen ? View.VISIBLE : View.GONE);
+        if (moodView != null) {
+            moodView.setVisibility(on && moodScreen ? View.VISIBLE : View.GONE);
+            if (on && moodScreen) moodView.start();
+        }
         WindowManager.LayoutParams lp = getWindow().getAttributes();
-        lp.screenBrightness = on ? 0.01f : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
+        lp.screenBrightness = on ? (moodScreen ? 0.3f : 0.01f) : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
         getWindow().setAttributes(lp);
         onDarkChanged();
         refresh();
@@ -690,10 +710,10 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         }
         refreshLight();
         int m = player.motion();
-        motionValue.setText(m == Mixer.MOTION_ORBIT ? "행성 궤도" : m == Mixer.MOTION_ROTATE ? "360° 회전" : "멈춤");
+        motionValue.setText(m == Mixer.MOTION_NONE ? "멈춤" : "360° 회전");
         sleepValue.setText(player.sleepMinutes() == 0 ? "끔"
                 : String.format(Locale.KOREA, "%d분 남음", (player.sleepRemainingMs() + 59_999) / 60_000));
-        screenValue.setText(isDark() ? "어둡게 켜짐" : "어둡게");
+        screenValue.setText(isDark() ? (moodScreen ? "무드등 켜짐" : "어둡게 켜짐") : "무드등");
         if (darkText != null) {
             darkText.setText("화면을 누르면 돌아와요" + (player.sleepMinutes() > 0
                     ? String.format(Locale.KOREA, "\n수면 타이머 %d분 남음", (player.sleepRemainingMs() + 59_999) / 60_000) : ""));

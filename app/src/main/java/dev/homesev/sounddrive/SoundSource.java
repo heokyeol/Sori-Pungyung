@@ -14,6 +14,7 @@ abstract class SoundSource {
     final Noise rng;
     final Spatial.State spatial = new Spatial.State();
     float fade; // smoothed on/off, touched only by the audio thread
+    volatile float level; // current loudness (RMS) of this sound alone, written by the audio thread
 
     /** Asset name of a recorded stereo loop (e.g. "waves.ogg"), or null for synth only. */
     String asset;

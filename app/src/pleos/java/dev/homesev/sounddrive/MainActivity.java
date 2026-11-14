@@ -117,9 +117,9 @@ public final class MainActivity extends BaseActivity implements VehicleLink.List
                 voice.say(c.minutes == 0 ? "수면 타이머를 껐어요" : c.minutes + "분 뒤에 천천히 꺼질게요");
                 break;
             case MOTION: {
-                int m = c.arg.equals("orbit") ? Mixer.MOTION_ORBIT : c.arg.equals("rotate") ? Mixer.MOTION_ROTATE : Mixer.MOTION_NONE;
+                int m = c.arg.equals("rotate") ? Mixer.MOTION_ROTATE : Mixer.MOTION_NONE;
                 setMotion(m);
-                voice.say(m == Mixer.MOTION_ORBIT ? "행성 궤도로 돌게요" : m == Mixer.MOTION_ROTATE ? "천천히 회전할게요" : "움직임을 멈췄어요");
+                voice.say(m == Mixer.MOTION_ROTATE ? "천천히 회전할게요" : "움직임을 멈췄어요");
                 break;
             }
             case PRESET: applyPreset(c.arg.split(",")); voice.say("분위기를 바꿨어요"); break;

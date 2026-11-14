@@ -22,8 +22,8 @@ public final class VoiceCommandsTest {
         t("한 시간 뒤에 꺼 줘", "SLEEP 60");
         t("타이머 취소", "SLEEP 0");
         t("수면 타이머 켜줘", "SLEEP 30");
-        t("행성 모드", "MOTION orbit");
-        t("궤도 모드 켜줘", "MOTION orbit");
+        t("행성 모드", "MOTION rotate");
+        t("궤도 모드 켜줘", "MOTION rotate");
         t("회전 시켜줘", "MOTION rotate");
         t("움직임 멈춰", "MOTION none");
         t("캠핑 분위기로", "PRESET fire,birds,pad");

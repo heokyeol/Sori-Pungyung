@@ -96,7 +96,7 @@ final class Player {
         load();
         engine = new AudioEngine(sources);
         engine.mixer.master = 0.8f; // no volume control on screen any more; the car's own volume knob does it
-        engine.mixer.motion = prefs.getInt("motion", Mixer.MOTION_NONE);
+        engine.mixer.motion = prefs.getInt("motion", Mixer.MOTION_NONE) == Mixer.MOTION_NONE ? Mixer.MOTION_NONE : Mixer.MOTION_ROTATE; // old "orbit" → 360°
         main.post(tick);
         // Recordings are decoded only for sounds that are on (≈17 MB each), and dropped after a
         // minute off, so dozens of unlockable sounds don't exhaust memory.
@@ -353,7 +353,8 @@ final class Player {
     /** Sound level while a window is open (Pleos window link); 1 = unchanged. */
     /** Cycle still → planet orbits → 360° turn → still. */
     int cycleMotion() {
-        int m = (engine.mixer.motion + 1) % 3;
+        // Only two choices on screen now: still, or the whole scene slowly turning 360°.
+        int m = engine.mixer.motion == Mixer.MOTION_NONE ? Mixer.MOTION_ROTATE : Mixer.MOTION_NONE;
         engine.mixer.motion = m;
         prefs.edit().putInt("motion", m).apply();
         save();

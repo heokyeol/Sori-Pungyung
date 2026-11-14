@@ -19,7 +19,7 @@ final class Mixer {
     private float sceneSmooth = 1f;
 
     private float masterSmooth = -1;
-    private float[] mono = new float[0], l = new float[0], r = new float[0];
+    private float[] mono = new float[0], l = new float[0], r = new float[0], l0 = new float[0], r0 = new float[0];
     private final Spatial.Target tg = new Spatial.Target();
 
     Mixer(SoundSource[] sources, float sr) { this.sources = sources; this.sr = sr; }
@@ -42,7 +42,7 @@ final class Mixer {
 
     void render(float[] interleaved, int frames) {
         moveSources(frames / sr);
-        if (mono.length < frames) { mono = new float[frames]; l = new float[frames]; r = new float[frames]; }
+        if (mono.length < frames) { mono = new float[frames]; l = new float[frames]; r = new float[frames]; l0 = new float[frames]; r0 = new float[frames]; }
         java.util.Arrays.fill(l, 0, frames, 0f);
         java.util.Arrays.fill(r, 0, frames, 0f);
         float fadeStep = frames / (sr * 0.08f); // on/off in ~80 ms: feels instant, still click-free
@@ -51,9 +51,16 @@ final class Mixer {
             float start = s.fade;
             if (start < want) s.fade = Math.min(want, start + fadeStep);
             else if (start > want) s.fade = Math.max(want, start - fadeStep);
-            if (start == 0f && s.fade == 0f) continue;
+            if (start == 0f && s.fade == 0f) { s.level *= 0.8f; continue; }
             // Linear fade across the block avoids clicks when toggling.
+            System.arraycopy(l, 0, l0, 0, frames);
+            System.arraycopy(r, 0, r0, 0, frames);
             s.renderInto(l, r, frames, sr, start, s.fade, tg, mono);
+            // How loud this one sound is right now (RMS of what it added), for the mood-light picture.
+            double e = 0;
+            for (int i = 0; i < frames; i += 2) { float dl = l[i] - l0[i], dr = r[i] - r0[i]; e += dl * dl + dr * dr; }
+            float rms = (float) Math.sqrt(e / Math.max(1, frames / 2) / 2);
+            s.level = rms > s.level ? s.level + (rms - s.level) * 0.6f : s.level * 0.85f + rms * 0.15f;
         }
         sceneSmooth += (scene - sceneSmooth) * Math.min(1f, frames / (sr * 0.5f));
         float targetMaster = sceneSmooth * master * duck * (float) Math.pow(10, extraDb / 20.0) * 1.6f;

@@ -14,7 +14,7 @@ final class VoiceCommands {
     static final class Command {
         final Type type;
         final String sound;   // source id for ON/OFF/MOVE
-        final String arg;     // MOVE: left/right/front/back/near/far; PRESET: ids; MOTION: orbit/rotate/none; NAVIGATE: place category or null
+        final String arg;     // MOVE: left/right/front/back/near/far; PRESET: ids; MOTION: rotate/none; NAVIGATE: place category or null
         final int minutes;    // SLEEP
         Command(Type t, String sound, String arg, int minutes) { type = t; this.sound = sound; this.arg = arg; this.minutes = minutes; }
         @Override public String toString() { return type + (sound != null ? " " + sound : "") + (arg != null ? " " + arg : "") + (type == Type.SLEEP ? " " + minutes : ""); }
@@ -101,8 +101,7 @@ final class VoiceCommands {
         if (bareMinutes > 0 && (n.contains("뒤") || n.contains("후"))) return new Command(Type.SLEEP, null, null, bareMinutes);
 
         // Motion
-        if (n.contains("행성") || n.contains("궤도")) return new Command(Type.MOTION, null, n.contains("꺼") || n.contains("멈") ? "none" : "orbit", 0);
-        if (n.contains("회전") || n.contains("빙글") || n.contains("돌려")) return new Command(Type.MOTION, null, n.contains("꺼") || n.contains("멈") ? "none" : "rotate", 0);
+        if (n.contains("회전") || n.contains("빙글") || n.contains("돌려") || n.contains("행성") || n.contains("궤도")) return new Command(Type.MOTION, null, n.contains("꺼") || n.contains("멈") ? "none" : "rotate", 0);
         if (n.contains("움직임") && (n.contains("꺼") || n.contains("멈") || n.contains("그만"))) return new Command(Type.MOTION, null, "none", 0);
 
         // Presets
