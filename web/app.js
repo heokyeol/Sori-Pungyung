@@ -117,7 +117,7 @@ const $ = (id) => document.getElementById(id);
 // ── State (persisted) ─────────────────────────────────────────────────────
 const saved = JSON.parse(localStorage.getItem("sd:state") || "{}");
 const S = {
-  master: saved.master ?? 0.8, motion: saved.motion ?? 0, birdAuto: saved.birdAuto ?? true,
+  master: 0.8, motion: saved.motion ?? 0, birdAuto: saved.birdAuto ?? true,
   birdsOn: saved.birdsOn ?? Object.fromEntries(BIRDS.map((b) => [b.id, true])),
   unlocked: saved.unlocked ?? {}, spots: saved.spots ?? {}, spotNote: saved.spotNote ?? {},
   regions: saved.regions ?? {}, stamps: saved.stamps ?? {},
@@ -138,7 +138,7 @@ let saveTimer;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => localStorage.setItem("sd:state", JSON.stringify({
-    master: S.master, motion: S.motion, birdAuto: S.birdAuto, birdsOn: S.birdsOn, unlocked: S.unlocked, spots: S.spots, spotNote: S.spotNote, regions: S.regions, stamps: S.stamps, perch: S.perch,
+    motion: S.motion, birdAuto: S.birdAuto, birdsOn: S.birdsOn, unlocked: S.unlocked, spots: S.spots, spotNote: S.spotNote, regions: S.regions, stamps: S.stamps, perch: S.perch,
     sounds: Object.fromEntries(SOUNDS.map((s) => [s.id, { x: s.x, y: s.y, v: s.volume, on: s.on }])),
   })), 300);
 }
@@ -412,19 +412,16 @@ function draw(t) {
     const a = s.anim, target = s.on ? 1 : 0;
     if (Math.abs(a.shown - target) > 0.001) { a.shown += (target - a.shown) * Math.min(1, dt * 10); busy = true; }
     if (a.pop > 0.001) { a.pop *= Math.exp(-dt * 6); busy = true; } else a.pop = 0;
-    const lf = drag && drag.s === s && drag.lifted ? Math.min(1, Math.max(0, (t - drag.lt) / 140)) : 0; // 0→1: the dot popping loose
-    if (lf > 0 && lf < 1) busy = true;
     const pop = 1 + 0.3 * a.pop * Math.cos(a.pop * 9), px = CX + s.x * R, py = CY + s.y * R;
     if (a.shown < 0.03) continue; // off sounds are not drawn on the stage (they fade/shrink out while turning off)
     {
       const fade = Math.min(1, a.shown);
-      const r = (28 + 20 * s.volume) * U * pop * (0.6 + 0.4 * fade) * (1 + 0.15 * lf), offDrag = !!(drag && drag.s === s && drag.off);
+      const r = (28 + 20 * s.volume) * U * pop * (0.6 + 0.4 * fade), offDrag = !!(drag && drag.s === s && drag.off);
       g2.globalAlpha = (offDrag ? 0.55 : 1) * fade; g2.fillStyle = "#0b0b0b"; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.fill();
       if (offDrag) g2.setLineDash([5, 5]);
       g2.globalAlpha = (offDrag ? 0.5 : 0.94) * fade; g2.lineWidth = 1.5; g2.beginPath(); g2.arc(px, py, r, 0, 7); g2.stroke();
       g2.setLineDash([]);
       if (s === selected && !offDrag) { g2.globalAlpha = 0.6 * fade; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
-      if (lf > 0 && !offDrag) { g2.globalAlpha = 0.5 * lf * fade; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 13 * U, 0, 7); g2.stroke(); }
       drawIcon(g2, s.id, px, py, r * 0.86, (offDrag ? 0.35 : 0.92) * fade);
       const f1 = Math.max(11, 17 * U), f2 = Math.max(9, 12 * U);
       if (offDrag) {
@@ -466,8 +463,8 @@ function draw(t) {
   g2.globalAlpha = 1;
   if (busy) requestDraw(); else lastFrame = 0;
 }
-let birdEdit = false, perchDrag = null, pressTimer = null;
-const HOLD_MS = 400; // press-and-hold time before a dot or a tile lifts off
+let birdEdit = false, perchDrag = null;
+const HOLD_MS = 400; // press-and-hold fallback before a tile lifts off
 function perchXY(id) {
   const bird = SOUNDS.find((x) => x.flock), [ox, oy] = S.perch[id] || [0, 0];
   let x = bird.x + ox, y = bird.y + oy; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
@@ -555,10 +552,7 @@ cv.addEventListener("pointerdown", (e) => {
     return;
   }
   const s = nearest(x, y);
-  clearTimeout(pressTimer);
-  // A dot never follows the finger right away: press and hold ~400 ms without moving and it lifts off, then it follows.
-  const mine = drag = { s, x0: x, y0: y, moved: false, tx: x, ty: y, sx: s ? s.x : 0, sy: s ? s.y : 0, off: false, lifted: false, lt: 0, dead: false };
-  if (s) pressTimer = setTimeout(() => { if (drag === mine && !mine.dead && !mine.moved) { mine.lifted = true; mine.lt = performance.now(); buzz(20); requestDraw(); } }, HOLD_MS);
+  drag = { s, x0: x, y0: y, moved: false, tx: x, ty: y, sx: s ? s.x : 0, sy: s ? s.y : 0, off: false };
   cv.setPointerCapture(e.pointerId);
   drop(x, y, s ? s.color : "#ffffff", s ? 1 : 0.6); buzz(8);
 });
@@ -573,12 +567,8 @@ cv.addEventListener("pointermove", (e) => {
     S.perch[perchDrag.id] = [nx - bird.x, ny - bird.y]; voices.get("birds")?.move(0.006); requestDraw();
     return;
   }
-  if (!drag || !drag.s || drag.dead) return;
+  if (!drag || !drag.s) return;
   const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  if (!drag.lifted) { // moved before the hold finished: a plain swipe, the dot stays where it is
-    if (Math.hypot(x - drag.x0, y - drag.y0) > 8) { drag.dead = true; clearTimeout(pressTimer); }
-    return;
-  }
   if (Math.hypot(x - drag.x0, y - drag.y0) > 8) drag.moved = true;
   if (!drag.moved) return;
   let nx = (x - CX) / R, ny = (y - CY) / R; const d = Math.hypot(nx, ny); if (d > 1) { nx /= d; ny /= d; }
@@ -590,7 +580,6 @@ cv.addEventListener("pointermove", (e) => {
   requestDraw();
 });
 cv.addEventListener("pointerup", (e) => {
-  clearTimeout(pressTimer);
   if (birdEdit) {
     if (perchDrag && perchDrag.id) { if (!perchDrag.moved) { S.birdsOn[perchDrag.id] = !S.birdsOn[perchDrag.id]; buzz(10); } save(); }
     else setBirdEdit(false);
@@ -820,7 +809,6 @@ function tickSlider(canvas, get, set) {
   return paint;
 }
 const paintSel = tickSlider($("selSlider"), () => (selected ? selected.volume : 0), (v) => { if (!selected) return; selected.volume = v; voices.get(selected.id)?.volume(v); save(); refreshLight(); });
-const paintMaster = tickSlider($("masterSlider"), () => S.master, (v) => { S.master = v; if (masterGain) masterGain.gain.setTargetAtTime(v * 1.6, ctx.currentTime, 0.05); $("masterVal").textContent = Math.round(v * 100); save(); });
 function refreshLight() {
   for (const t of tiles) drawTile(t);
   if (selected) {
@@ -838,7 +826,6 @@ function refresh() {
   $("play").setAttribute("aria-label", playing ? "정지" : "재생");
   for (const b of document.querySelectorAll(".tabs .preset")) b.classList.toggle("active", b.textContent === name);
   refreshLight();
-  $("masterVal").textContent = Math.round(S.master * 100); paintMaster();
   const left = Math.ceil(sleepLeft() / 60e3);
   $("sleep").querySelector("b").textContent = sleepMin ? `${left}분 남음` : "끔";
   $("motion").querySelector("b").textContent = ["멈춤", "행성 궤도", "360° 회전"][S.motion];

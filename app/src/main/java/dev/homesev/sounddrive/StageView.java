@@ -42,18 +42,6 @@ final class StageView extends View {
     private boolean birdEdit;
     private int draggingPerch = -1;
     private boolean longPressed; // stays false now: bird edit opens from the 새 종류 sheet
-    // A dot only moves after it "lifts": hold it still for LIFT_MS, then it pops loose and follows the finger.
-    private static final long LIFT_MS = 400;
-    private boolean lifted;
-    private final Runnable longPress = () -> {
-        if (StageView.this.dragging != null && !StageView.this.moved && !StageView.this.locked) {
-            lifted = true;
-            state(StageView.this.dragging)[1] = 1f;
-            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
-            invalidate();
-        }
-    };
 
     void setBirdEdit(boolean on) {
         if (birds == null || birds.locked) on = false;
@@ -284,7 +272,7 @@ final class StageView extends View {
             float on = st[0];
             if (on < 0.05f) continue; // off sounds aren't on the stage; they come in by dragging a tile
             {
-                float r = (28 + 20 * s.volume) * dp * k * pop * (s == dragging && lifted ? 1.15f : 1f) * (0.3f + 0.7f * on);
+                float r = (28 + 20 * s.volume) * dp * k * pop * (s == dragging ? 1.12f : 1f) * (0.3f + 0.7f * on);
                 if (s == dragging && dragOut) { // "놓으면 꺼짐": faint dashed ring only
                     line.setStrokeWidth(1.2f * dp);
                     line.setAlpha(120);
@@ -302,12 +290,6 @@ final class StageView extends View {
                 line.setStrokeWidth(1.5f * dp);
                 line.setAlpha(240);
                 c.drawCircle(px, py, r, line);
-                if (s == dragging && lifted) { // lifted: a second ring shows it's loose
-                    line.setStrokeWidth(1.2f * dp);
-                    line.setAlpha(170);
-                    c.drawCircle(px, py, r + 12 * dp * k, line);
-                    line.setAlpha(240);
-                }
                 if (s == selected) {
                     line.setStrokeWidth(1f * dp);
                     line.setAlpha(150);
@@ -399,9 +381,7 @@ final class StageView extends View {
                     return true;
                 }
                 longPressed = false;
-                lifted = false;
                 dragging = nearest(x, y);
-                if (dragging != null) postDelayed(longPress, LIFT_MS);
                 downX = lastTickX = x; downY = lastTickY = y; moved = false; dragOut = false;
                 if (dragging != null) { startX = dragging.x; startY = dragging.y; }
                 drop(x, y, dragging != null ? 1f : 0.6f);
@@ -423,10 +403,6 @@ final class StageView extends View {
                     return true;
                 }
                 if (dragging == null) return true;
-                if (!lifted) { // moving before the hold completes cancels it; the dot stays put
-                    if (Math.hypot(x - downX, y - downY) > 8 * dp) { moved = true; removeCallbacks(longPress); }
-                    return true;
-                }
                 if (Math.hypot(x - downX, y - downY) > 8 * dp) moved = true;
                 if (moved && !locked) {
                     float nx = (x - cx) / radius, ny = (y - cy) / radius;
@@ -443,7 +419,6 @@ final class StageView extends View {
                 }
                 return true;
             case MotionEvent.ACTION_UP:
-                removeCallbacks(longPress);
                 if (birdEdit) {
                     if (draggingPerch >= 0) {
                         if (!moved) {
@@ -460,10 +435,8 @@ final class StageView extends View {
                     return true;
                 }
                 if (longPressed) { dragging = null; longPressed = false; return true; }
-                if (dragging != null && !lifted && moved) { dragging = null; invalidate(); return true; } // slid off before lifting
                 if (dragging != null) {
-                    lifted = false;
-                    if (!moved) { // a tap (or a lift put straight back down) only selects
+                    if (!moved) { // a tap only selects
                         state(dragging)[1] = 1f;
                     } else if (dragOut) { // pulled off the stage: switch off, put it back where it was
                         dragging.x = startX; dragging.y = startY;
@@ -486,9 +459,8 @@ final class StageView extends View {
                 }
                 return true;
             case MotionEvent.ACTION_CANCEL:
-                removeCallbacks(longPress);
                 if (dragging != null && dragOut) { dragging.x = startX; dragging.y = startY; }
-                dragging = null; dragOut = false; lifted = false;
+                dragging = null; dragOut = false;
                 invalidate();
                 return true;
         }

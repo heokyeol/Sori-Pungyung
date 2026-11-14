@@ -33,8 +33,8 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
     protected TextView status;
     protected float dp, k = 1f;
     private Widgets.RoundButton play;
-    private TextView title, timeView, tempView, selName, selInfo, masterValue, motionValue, sleepValue, screenValue;
-    private Widgets.TickSlider selSlider, masterSlider;
+    private TextView title, timeView, tempView, selName, selInfo, motionValue, sleepValue, screenValue;
+    private Widgets.TickSlider selSlider;
     private final java.util.List<Widgets.SoundTile> tiles = new java.util.ArrayList<>();
     private final java.util.List<TextView[]> tabs = new java.util.ArrayList<>(); // {label, underline-holder}
     private final java.util.List<Widgets.Underline> tabUnders = new java.util.ArrayList<>();
@@ -50,7 +50,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
 
     /** Car head unit (larger text, landscape) vs phone. */
     protected abstract boolean isCar();
-    /** Build-specific switches below the master volume. */
+    /** Build-specific switches in the panel. */
     protected void addExtras(LinearLayout panel) {}
     /** Build-specific dark-screen buttons; default is a single "화면 어둡게". */
     protected void addDarkButtons(LinearLayout panel) {
@@ -309,17 +309,6 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             panel.addView(birdRow, matchWrap(px(6 * k)));
         }
 
-        // master volume
-        LinearLayout mRow = new LinearLayout(this);
-        mRow.addView(label("전체 볼륨", 15, Widgets.MUTED), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        masterValue = label("", 15, Widgets.INK);
-        masterValue.setTypeface(Widgets.MONO);
-        mRow.addView(masterValue);
-        panel.addView(mRow, matchWrap(px(14 * k)));
-        masterSlider = new Widgets.TickSlider(this);
-        masterSlider.setValue(player.engine.mixer.master);
-        masterSlider.setOnChange(v -> { player.engine.mixer.master = v; player.save(); masterValue.setText(String.valueOf(Math.round(v * 100))); });
-        panel.addView(masterSlider, matchWrap(px(4 * k)));
         panel.addView(hairline(), matchWrap(px(14 * k)));
 
         // bottom cells: motion, sleep timer, screen
@@ -700,7 +689,6 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
             tabUnders.get(i).setOn(active);
         }
         refreshLight();
-        masterValue.setText(String.valueOf(Math.round(player.engine.mixer.master * 100)));
         int m = player.motion();
         motionValue.setText(m == Mixer.MOTION_ORBIT ? "행성 궤도" : m == Mixer.MOTION_ROTATE ? "360° 회전" : "멈춤");
         sleepValue.setText(player.sleepMinutes() == 0 ? "끔"

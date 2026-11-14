@@ -95,7 +95,7 @@ final class Player {
         birds = b;
         load();
         engine = new AudioEngine(sources);
-        engine.mixer.master = prefs.getFloat("master", 0.8f);
+        engine.mixer.master = 0.8f; // no volume control on screen any more; the car's own volume knob does it
         engine.mixer.motion = prefs.getInt("motion", Mixer.MOTION_NONE);
         main.post(tick);
         // Recordings are decoded only for sounds that are on (≈17 MB each), and dropped after a
