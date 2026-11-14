@@ -429,7 +429,7 @@ function draw(t) {
       g2.setLineDash([]);
       if (s === selected && !offDrag) { g2.globalAlpha = 0.6 * fade; g2.lineWidth = 1; g2.beginPath(); g2.arc(px, py, r + 7 * U, 0, 7); g2.stroke(); }
       drawIcon(g2, s.id, px, py, r * 0.86, (offDrag ? 0.35 : 0.92) * fade);
-      const f1 = Math.max(11, 17 * U), f2 = Math.max(9, 12 * U);
+      const f1 = Math.max(11, 17 * U);
       if (offDrag) {
         g2.globalAlpha = 1; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`;
         g2.fillText("놓으면 꺼짐", Math.max(50, Math.min(W - 50, px)), py + r + f1 * 1.35);
@@ -437,7 +437,7 @@ function draw(t) {
       }
       if (birdEdit && s.flock) continue; // perches sit around the dot in edit mode; skip its label
       g2.globalAlpha = fade; g2.fillStyle = INK; g2.font = `bold ${f1}px sans-serif`; g2.fillText(s.name, px, py + r + f1 * 1.35);
-      g2.fillStyle = MUTED; g2.font = `${f2}px ui-monospace, Menlo, monospace`; g2.fillText(`${sideText(s.x, s.y)}  /  ${Math.round(s.volume * 100)}`, px, py + r + f1 * 1.35 + f2 * 1.6);
+      // name only: the dot's place and size already say where and how loud
     }
   }
   // Bird names pop up at their perch while they call; the edit mode shows every perch.
@@ -692,7 +692,7 @@ function drawTile(t) {
   if (s.on) { x.globalAlpha = 0.92; x.lineWidth = 2; x.beginPath(); x.arc(cx, cy, r + 7, -Math.PI / 2, -Math.PI / 2 + (300 * s.volume * Math.PI) / 180); x.stroke(); }
   if (s === selected) { x.globalAlpha = 0.6; x.lineWidth = 1; x.beginPath(); x.arc(cx, cy, r + 12, 0, 7); x.stroke(); }
   t.el.classList.toggle("on", s.on);
-  t.vol.textContent = s.on ? Math.round(s.volume * 100) : "";
+  t.vol.textContent = ""; // the arc already shows the volume
 }
 let tiles = [];
 // Drag a tile onto the stage: only a ~400 ms press-and-hold lifts it; moving before that is plain scrolling (and cancels the hold).
@@ -815,12 +815,19 @@ function tickSlider(canvas, get, set) {
   return paint;
 }
 const paintSel = tickSlider($("selSlider"), () => (selected ? selected.volume : 0), (v) => { if (!selected) return; selected.volume = v; voices.get(selected.id)?.volume(v); save(); refreshLight(); });
+// Plain words for where a sound sits: "왼쪽 앞", "바로 뒤", with "가까이"/"멀리" when clearly near or far.
+function whereText(x, y) {
+  const a = Math.abs(Math.atan2(x, -y) * 180 / Math.PI), side = x < 0 ? "왼쪽" : "오른쪽";
+  const dir = a <= 20 ? "바로 앞" : a >= 160 ? "바로 뒤" : a < 70 ? `${side} 앞` : a <= 110 ? side : `${side} 뒤`;
+  const d = Math.hypot(x, y);
+  if (d < 0.15) return "바로 곁";
+  return d < 0.35 ? `${dir}, 가까이` : d > 0.75 ? `${dir}, 멀리` : dir;
+}
 function refreshLight() {
   for (const t of tiles) drawTile(t);
   if (selected) {
     $("selName").textContent = selected.name;
-    const side = sideText(selected.x, selected.y), where = /^(오른쪽|왼쪽)/.test(side) ? side.replace(" ", ` ${selected.y <= 0 ? "앞" : "뒤"} `) : side;
-    $("selInfo").textContent = `볼륨 ${Math.round(selected.volume * 100)}  /  ${where}`;
+    $("selInfo").textContent = selected.on ? whereText(selected.x, selected.y) : "무대로 끌어 넣으면 켜져요";
   }
   paintSel(); requestDraw();
 }
@@ -889,6 +896,14 @@ mood.cx = mood.cv.getContext("2d");
 // small read-only debug view (used by the browser tests)
 window.__mood = { get open() { return mood.open; }, get rings() { return mood.rings.length; }, get fade() { return mood.fade; }, get ringList() { return mood.rings.map((r) => ({ id: r.id, x: r.x, y: r.y, strength: r.strength, age: r.age })); }, get levels() { return mood.levels; }, get spawned() { return mood.spawned; }, get size() { return Math.min(mood.w, mood.h) * 0.45; }, get voices() { return voices.size; } };
 const moodSize = () => Math.min(mood.w, mood.h) * 0.45;
+// A touch of each sound's own colour (mostly its hue, a little ink), kept dim by the alpha.
+const moodTints = {};
+function moodTint(id) {
+  if (moodTints[id]) return moodTints[id];
+  const hex = (SOUNDS.find((s) => s.id === id) || {}).color || INK, n = parseInt(hex.slice(1), 16);
+  const mix = (v, ink) => Math.round(v * 0.8 + ink * 0.2);
+  return (moodTints[id] = `rgb(${mix((n >> 16) & 255, 237)},${mix((n >> 8) & 255, 237)},${mix(n & 255, 237)})`);
+}
 function moodSpawn(id, style, strength, x, y, delay = 0) {
   const st = (mood.spawned[id] ||= { n: 0, sum: 0 });
   st.n++; st.sum += strength;
@@ -916,7 +931,7 @@ function moodStep(dt, now) {
   for (const s of SOUNDS) {
     if (s.flock) continue;
     const v = voices.get(s.id), m = (s.mood ||= { level: 0, peak: 0, slow: 0, acc: 0, next: 0 });
-    if (!(v && v.tap && !s.locked && s.on)) { m.level = 0; m.acc = 0; delete mood.levels[s.id]; continue; }
+    if (!(v && v.tap && !s.locked && s.on)) { m.level = 0; m.acc = 0; m.glow = 0; delete mood.levels[s.id]; continue; }
     const rms = v.tap();
     m.level = rms > m.level ? m.level + (rms - m.level) * 0.6 : m.level * 0.85 + rms * 0.15;
     mood.levels[s.id] = m.level;
@@ -924,6 +939,7 @@ function moodStep(dt, now) {
     const norm = m.peak > 1e-4 ? Math.min(1, m.level / m.peak) : 0;
     const loudJump = m.slow > 1e-4 && m.level > m.slow * 3 && m.level > 0.02;
     m.slow += (m.level - m.slow) * Math.min(1, dt * 0.8);
+    m.glow = (m.glow || 0) + (s.volume * norm - (m.glow || 0)) * Math.min(1, dt * 3); // soft coloured light that breathes with the sound
     if (m.level < 1e-4) { m.acc = 0; continue; }
     const style = moodStyleOf(s.id), P = MOOD_STYLES[style], x = mood.w / 2 + s.x * sz, y = mood.h / 2 + s.y * sz;
     if (!m.next) m.next = P.interval * (1 + P.jitter * (Math.random() - 0.5));
@@ -939,11 +955,19 @@ function moodDraw() {
   const c = mood.cx, sz = moodSize();
   c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = "#000"; c.fillRect(0, 0, mood.cv.width, mood.cv.height);
   c.setTransform(mood.dpr, 0, 0, mood.dpr, 0, 0); c.strokeStyle = INK;
+  for (const s of SOUNDS) { // a faint glow of the sound's colour where it sits
+    const g = s.mood && s.mood.glow; if (!g || g < 0.01 || !s.on) continue;
+    const x = mood.w / 2 + s.x * sz, y = mood.h / 2 + s.y * sz, rad = 0.3 * sz;
+    const grd = c.createRadialGradient(x, y, 0, x, y, rad), tint = moodTint(s.id);
+    grd.addColorStop(0, tint); grd.addColorStop(1, "rgba(0,0,0,0)");
+    c.globalAlpha = 0.14 * g * mood.fade; c.fillStyle = grd; c.beginPath(); c.arc(x, y, rad, 0, 7); c.fill();
+  }
   for (const r of mood.rings) {
     if (r.age < 0) continue;
     const P = MOOD_STYLES[r.style], rad = 6 + P.speed * sz * r.age, life = 1 - rad / (P.maxR * sz);
     if (life <= 0) continue;
-    c.globalAlpha = 0.38 * r.strength * life * Math.sqrt(life) * mood.fade; c.lineWidth = P.stroke;
+    c.strokeStyle = moodTint(r.id);
+    c.globalAlpha = 0.45 * r.strength * life * Math.sqrt(life) * mood.fade; c.lineWidth = P.stroke;
     c.beginPath(); c.arc(r.x, r.y, rad, 0, 7); c.stroke();
   }
   c.globalAlpha = 1;

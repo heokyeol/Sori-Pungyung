@@ -24,16 +24,17 @@ final class MoodView extends View {
     }
 
     private static final int MAX_RINGS = 160;
-    private static final float BASE_ALPHA = 0.38f;
+    private static final float BASE_ALPHA = 0.45f;
 
-    private static final class Ring { float x, y, age, speed, maxR, stroke, strength; }
+    private static final class Ring { float x, y, age, speed, maxR, stroke, strength; int color; }
 
     private final Host host;
     private final float dp;
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG), text = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final List<Ring> rings = new ArrayList<>();
     private final Random rnd = new Random();
-    private float[] acc = new float[0], peak = new float[0], slow = new float[0], next = new float[0];
+    private float[] acc = new float[0], peak = new float[0], slow = new float[0], next = new float[0], glow = new float[0];
+    private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private long[] seenCall = new long[Birds.ALL.length];
     private long last, shownAt;
     private float fade = 0f; // 0..1, fades in on open and out when the timer ends
@@ -57,7 +58,7 @@ final class MoodView extends View {
         fade = 0f;
         shownAt = SystemClock.uptimeMillis();
         SoundSource[] src = host.moodSources();
-        acc = new float[src.length]; peak = new float[src.length]; slow = new float[src.length]; next = new float[src.length];
+        acc = new float[src.length]; peak = new float[src.length]; slow = new float[src.length]; next = new float[src.length]; glow = new float[src.length];
         for (SoundSource s : src) if (s instanceof Birds) seenCall = ((Birds) s).calledAt.clone();
         invalidate();
     }
@@ -81,16 +82,23 @@ final class MoodView extends View {
             float norm = peak[i] > 1e-4f ? Math.min(1f, lvl / peak[i]) : 0f;
             boolean loudJump = slow[i] > 1e-4f && lvl > slow[i] * 3f && lvl > 0.02f;
             slow[i] += (lvl - slow[i]) * Math.min(1f, dt * 0.8f);
+            glow[i] += ((s.enabled ? s.volume * norm : 0f) - glow[i]) * Math.min(1f, dt * 3f); // soft coloured light that breathes with the sound
+            if (glow[i] > 0.01f && !(s instanceof Birds)) {
+                float gx = cx + s.x * size, gy = cy + s.y * size, gr = 0.3f * size;
+                glowPaint.setShader(new android.graphics.RadialGradient(gx, gy, gr, tint(s.color), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
+                glowPaint.setAlpha((int) (255 * 0.14f * glow[i] * fade));
+                c.drawCircle(gx, gy, gr, glowPaint);
+            }
             if (lvl < 1e-4f || !s.enabled) { acc[i] = 0; continue; }
             if (s instanceof Birds) { birdCalls((Birds) s, cx, cy, size); continue; }
             MoodWaves.Style st = MoodWaves.of(s.id);
-            if (loudJump && st == MoodWaves.STORM) spawn(cx + s.x * size, cy + s.y * size, st, size, 1f);
+            if (loudJump && st == MoodWaves.STORM) spawn(cx + s.x * size, cy + s.y * size, st, size, 1f, s.color);
             acc[i] += dt * (0.4f + 1.2f * norm);
             if (next[i] <= 0) next[i] = st.interval * (1f + st.jitter * (rnd.nextFloat() - 0.5f));
             if (acc[i] >= next[i]) {
                 acc[i] = 0;
                 next[i] = 0;
-                spawn(cx + s.x * size, cy + s.y * size, st, size, s.volume * (0.35f + 0.65f * norm));
+                spawn(cx + s.x * size, cy + s.y * size, st, size, s.volume * (0.35f + 0.65f * norm), s.color);
             }
         }
 
@@ -101,6 +109,7 @@ final class MoodView extends View {
             float rad = 6 * dp + r.speed * r.age;
             if (rad >= r.maxR) { rings.remove(i); continue; }
             float life = 1f - rad / r.maxR;
+            line.setColor(r.color);
             line.setStrokeWidth(r.stroke * dp);
             line.setAlpha((int) (255 * BASE_ALPHA * r.strength * life * Math.sqrt(life) * fade));
             c.drawCircle(r.x, r.y, rad, line);
@@ -120,14 +129,20 @@ final class MoodView extends View {
                 seenCall[k] = b.calledAt[k];
                 if (!b.speciesOn[k]) continue;
                 float px = cx + (b.x + b.perchX[k]) * size, py = cy + (b.y + b.perchY[k]) * size;
-                spawn(px, py, MoodWaves.CALL, size, 0.9f);
-                Ring second = spawn(px, py, MoodWaves.CALL, size, 0.6f);
+                spawn(px, py, MoodWaves.CALL, size, 0.9f, b.color);
+                Ring second = spawn(px, py, MoodWaves.CALL, size, 0.6f, b.color);
                 if (second != null) second.age = -0.18f; // a beat later
             }
         }
     }
 
-    private Ring spawn(float x, float y, MoodWaves.Style st, float size, float strength) {
+    /** A touch of the sound's own colour (mostly its hue, a little ink), kept dim by the alpha. */
+    private static int tint(int c) {
+        int ink = 0xED;
+        return Color.rgb((int) (Color.red(c) * 0.8f + ink * 0.2f), (int) (Color.green(c) * 0.8f + ink * 0.2f), (int) (Color.blue(c) * 0.8f + ink * 0.2f));
+    }
+
+    private Ring spawn(float x, float y, MoodWaves.Style st, float size, float strength, int color) {
         if (rings.size() >= MAX_RINGS) rings.remove(0);
         Ring r = new Ring();
         r.x = x; r.y = y;
@@ -135,6 +150,7 @@ final class MoodView extends View {
         r.maxR = st.maxR * size;
         r.stroke = st.stroke;
         r.strength = Math.max(0f, Math.min(1f, strength));
+        r.color = tint(color);
         rings.add(r);
         return r;
     }

@@ -289,8 +289,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         selName = label("", 22, Widgets.INK);
         selName.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         selRow.addView(selName, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        selInfo = label("", 13, Widgets.MUTED);
-        selInfo.setTypeface(Widgets.MONO);
+        selInfo = label("", 14, Widgets.MUTED);
         selRow.addView(selInfo);
         panel.addView(selRow, matchWrap(px(18 * k)));
         selSlider = new Widgets.TickSlider(this);
@@ -725,11 +724,7 @@ abstract class BaseActivity extends Activity implements StageView.Listener, Play
         for (Widgets.SoundTile t : tiles) { t.selected = t.s == selected; t.invalidate(); }
         if (selected != null) {
             selName.setText(selected.name);
-            String side = StageView.side(selected.x, selected.y);
-            boolean front = selected.y <= 0;
-            String where = side.startsWith("오른쪽") || side.startsWith("왼쪽")
-                    ? side.replaceFirst(" ", " " + (front ? "앞 " : "뒤 ")) : side;
-            selInfo.setText(String.format(Locale.KOREA, "볼륨 %d  /  %s", Math.round(selected.volume * 100), where));
+            selInfo.setText(selected.enabled ? StageView.where(selected.x, selected.y) : "무대로 끌어 넣으면 켜져요");
             selSlider.setValue(selected.volume);
         }
         stage.invalidate();

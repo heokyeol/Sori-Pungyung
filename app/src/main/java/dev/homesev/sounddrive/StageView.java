@@ -164,6 +164,16 @@ final class StageView extends View {
         return st;
     }
 
+    /** Plain words for where a sound sits: "왼쪽 앞", "바로 뒤", with "가까이"/"멀리" when it's clearly near or far. */
+    static String where(float x, float y) {
+        double a = Math.abs(Math.toDegrees(Math.atan2(x, -y)));
+        String side = x < 0 ? "왼쪽" : "오른쪽";
+        String dir = a <= 20 ? "바로 앞" : a >= 160 ? "바로 뒤" : a < 70 ? side + " 앞" : a <= 110 ? side : side + " 뒤";
+        double d = Math.hypot(x, y);
+        if (d < 0.15) return "바로 곁";
+        return d < 0.35 ? dir + ", 가까이" : d > 0.75 ? dir + ", 멀리" : dir;
+    }
+
     /** "오른쪽 36°" — side and angle from straight ahead (0–180°). */
     static String side(float x, float y) {
         double deg = Math.toDegrees(Math.atan2(x, -y));
@@ -300,9 +310,7 @@ final class StageView extends View {
                 text.setTypeface(Typeface.DEFAULT_BOLD);
                 text.setTextSize(17 * dp * k);
                 text.setColor(Widgets.INK);
-                c.drawText(s.name, px, py + r + 24 * dp * k, text);
-                mono.setTextSize(12 * dp * k);
-                c.drawText(side(s.x, s.y) + "  /  " + Math.round(s.volume * 100), px, py + r + 44 * dp * k, mono);
+                c.drawText(s.name, px, py + r + 24 * dp * k, text); // name only: the dot's place and size already say where and how loud
             }
         }
         // Bird names pop up at their perch when they call (fade over 2.5 s)

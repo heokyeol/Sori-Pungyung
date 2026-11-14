@@ -179,7 +179,7 @@ final class Widgets {
         @Override protected void onMeasure(int w, int h) {
             int width = MeasureSpec.getSize(w);
             float r = Math.min(width * 0.3f, 40 * dp); // same as onDraw
-            setMeasuredDimension(width, (int) (r * 2 + 10 * dp + (24 + 19 + 10) * dp * k / scale));
+            setMeasuredDimension(width, (int) (r * 2 + 10 * dp + (24 + 12) * dp * k / scale));
         }
 
         @Override protected void onDraw(Canvas c) {
@@ -207,13 +207,7 @@ final class Widgets {
             float maxW = getWidth() - 6 * dp, w = t.measureText(s.name);
             if (w > maxW) t.setTextSize(t.getTextSize() * maxW / w); // long names shrink to fit their cell
             float ty = cy + r + 24 * dp * k / scale;
-            c.drawText(s.name, cx, ty, t);
-            if (on) {
-                t.setTypeface(MONO);
-                t.setColor(MUTED);
-                t.setTextSize(12 * dp * k / scale);
-                c.drawText(String.valueOf(Math.round(s.volume * 100)), cx, ty + 19 * dp * k / scale, t);
-            }
+            c.drawText(s.name, cx, ty, t); // the arc already shows the volume; no number under the name
         }
     }
 

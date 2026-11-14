@@ -61,7 +61,7 @@ button:focus-visible, canvas:focus-visible { outline: 1px solid var(--ink); outl
 .tile canvas { width: 100%; max-width: 104px; aspect-ratio: 1; }
 .tile b { font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .tile.on b { color: var(--ink); font-weight: 700; }
-.tile small { font-size: 12px; color: var(--muted); height: 16px; }
+.tile small { display: none; } /* volume number removed: the arc shows it */
 @media (orientation: portrait) {
   /* Phone: the sound tiles are one horizontally scrolling strip right under the stage (first thing in the panel). */
   #rows { order: -1; display: flex; gap: 4px; margin: 0 -20px; padding: 2px 20px 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
